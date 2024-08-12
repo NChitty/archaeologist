@@ -1,15 +1,15 @@
-package requests_test
+package schemas_test
 
 import (
 	"bytes"
 	"encoding/json"
 	"testing"
 
-	"github.com/NChitty/artifactsmmo/pkg/schemas/requests"
+	"github.com/NChitty/artifactsmmo/pkg/schemas"
 )
 
 func TestPositionMarshalling(t *testing.T) {
-  pos := requests.PositionSchema{X: 0, Y: 1}
+  pos := schemas.PositionSchema{X: 0, Y: 1}
   expected := []byte(`{"x":0,"y":1}`)
   actual, err := json.Marshal(pos)
   if !bytes.Equal(expected, actual) || err != nil {

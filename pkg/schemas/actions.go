@@ -1,4 +1,4 @@
-package requests
+package schemas
 
 type PositionSchema struct {
 	X int32 `json:"x"`
