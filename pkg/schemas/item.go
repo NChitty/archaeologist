@@ -121,3 +121,10 @@ type ItemSchema struct {
 	Effects     []*ItemEffectSchema `json:"effects"`
 	Craft       *CraftSchema        `json:"craft"`
 }
+
+type GlobalExchangeItemSchema struct {
+	Code      string `json:"code"`
+	Stock     int32  `json:"stock"`
+	SellPrice int32  `json:"sell_price"`
+	BuyPrice  int32  `json:"buy_price"`
+}
