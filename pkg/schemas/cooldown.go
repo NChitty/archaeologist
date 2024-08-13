@@ -11,14 +11,50 @@ type Action int
 
 const (
 	Movement = iota
+	Fight
+	Crafting
+	Gathering
+	BuyGlobalExchange
+	SellGlobalExchange
+	DeleteItem
+	DepositBank
+	WithdrawBank
+	Equip
+	Unequip
+	Task
+	Recycling
 )
 
 var actionName = map[Action]string{
-	Movement: "movement",
+	Movement:           "movement",
+	Fight:              "fight",
+	Crafting:           "crafting",
+	Gathering:          "gathering",
+	BuyGlobalExchange:  "buy_ge",
+	SellGlobalExchange: "sell_ge",
+	DeleteItem:         "delete_item",
+	DepositBank:        "deposit_bank",
+	WithdrawBank:       "withdraw_bank",
+	Equip:              "equip",
+	Unequip:            "unequip",
+	Task:               "task",
+	Recycling:          "recycling",
 }
 
 var actionValue = map[string]Action{
 	"movement": Movement,
+	"fight": Fight,
+	"crafting": Crafting,
+	"gathering": Gathering,
+	"buy_ge": BuyGlobalExchange,
+	"sell_ge": SellGlobalExchange,
+	"delete_item": DeleteItem,
+	"deposit_bank": DepositBank,
+	"withdraw_bank": WithdrawBank,
+	"equip": Equip,
+	"unequip": Unequip,
+	"task": Task,
+	"recycling": Recycling,
 }
 
 func (a Action) String() string {
@@ -29,7 +65,7 @@ func ParseAction(string string) (Action, error) {
 	string = strings.TrimSpace(strings.ToLower(string))
 	value, ok := actionValue[string]
 	if !ok {
-		return Action(0), fmt.Errorf("%q is not a valid action", string)
+		return Action(0), fmt.Errorf("%q is not a valid Action", string)
 	}
 	return Action(value), nil
 }

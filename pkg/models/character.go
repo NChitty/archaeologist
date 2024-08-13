@@ -1,6 +1,6 @@
 package models
 
-import "github.com/NChitty/artifactsmmo/pkg/schemas/responses"
+import "github.com/NChitty/artifactsmmo/pkg/schemas"
 
 type Position struct {
 	X int32
@@ -48,7 +48,7 @@ type Inventory struct {
 
 type Character struct {
 	Name             string
-	Skin             responses.Skin
+	Skin             schemas.Skin
 	Level            int32
 	Experience       int32
 	ExperienceNeeded int32

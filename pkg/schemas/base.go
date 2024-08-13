@@ -7,7 +7,7 @@ type ResponseContainer struct {
 }
 
 type PageableSchema interface {
-	CharacterSchema | MapSchema
+	CharacterSchema | MapSchema | SimpleItemSchema | ItemSchema
 }
 
 type PagedResponseContainer[T PageableSchema] struct {

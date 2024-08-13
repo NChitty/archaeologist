@@ -7,13 +7,6 @@ import (
 	"time"
 )
 
-type DestinationSchema struct {
-	Name    string `json:"name"`
-	X       int32  `json:"x"`
-	Y       int32  `json:"y"`
-	Content string `json:"content"`
-}
-
 type Skin int
 
 const (
@@ -62,6 +55,61 @@ func (s *Skin) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	parsed, err := ParseSkin(skins)
+	if err != nil {
+		return err
+	}
+	*s = parsed
+	return nil
+}
+
+type Skill int
+
+const (
+	WeaponCrafting = iota
+	GearCrafting
+	JewelryCrafting
+	Cooking
+	Woodcutting
+	Mining
+)
+
+var skillName = map[Skill]string{
+	WeaponCrafting:  "weaponcrafting",
+	GearCrafting:    "gearcrafting",
+	JewelryCrafting: "jewelrycrafting",
+	Cooking:         "cooking",
+	Woodcutting:     "woodcutting",
+	Mining:          "mining",
+}
+
+var skillValue = map[string]Skill{
+	"weaponcrafting":  WeaponCrafting,
+	"gearcrafting":    GearCrafting,
+	"jewelrycrafting": JewelryCrafting,
+	"cooking":         Cooking,
+	"woodcutting":     Woodcutting,
+	"mining":          Mining,
+}
+
+func (s Skill) String() string {
+	return skillName[s]
+}
+
+func ParseSkill(string string) (Skill, error) {
+	string = strings.TrimSpace(strings.ToLower(string))
+	value, ok := skillValue[string]
+	if !ok {
+		return Skill(0), fmt.Errorf("%q is not a valid skin", string)
+	}
+	return Skill(value), nil
+}
+
+func (s *Skill) UnmarshalJSON(data []byte) error {
+	var skills string
+	if err := json.Unmarshal(data, &skills); err != nil {
+		return err
+	}
+	parsed, err := ParseSkill(skills)
 	if err != nil {
 		return err
 	}
@@ -143,10 +191,4 @@ type CharacterSchema struct {
 	TaskTotal                       int32                 `json:"task_total"`
 	InventorySize                   int32                 `json:"inventory_max_items"`
 	Inventory                       []InventorySlotSchema `json:"inventory"`
-}
-
-type CharacterMovementDataSchema struct {
-	Cooldown    CooldownSchema    `json:"cooldown"`
-	Destination DestinationSchema `json:"destination"`
-	Character   CharacterSchema   `json:"CharacterSchema"`
 }
