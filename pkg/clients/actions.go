@@ -10,22 +10,85 @@ import (
 	"net/url"
 
 	"github.com/NChitty/artifactsmmo/pkg/schemas"
+	"github.com/NChitty/artifactsmmo/pkg/schemas/actions"
 )
 
 type ActionClient interface {
-	PostCharacterMoveAction(
+	PostCharacterMove(
 		ctx context.Context,
-		request schemas.PositionSchema,
+		character string,
+		request actions.PositionSchema,
 		reqEditor ...RequestEditorFn,
-	) (*schemas.CharacterMovementDataSchema, error)
+	) (*actions.CharacterMovementDataSchema, error)
+
+	PostCharacterEquipItem(
+		ctx context.Context,
+		character string,
+		request actions.EquipItemRequest,
+		reqEditor ...RequestEditorFn,
+	) (*actions.EquipItemResponseSchema, error)
+
+	PostCharacterUnequipItem(
+		ctx context.Context,
+		character string,
+		request actions.UnequipItemRequest,
+		reqEditor ...RequestEditorFn,
+	) (*actions.EquipItemResponseSchema, error)
+
+	PostCharacterFight(
+		ctx context.Context,
+		character string,
+		reqEditor ...RequestEditorFn,
+	) (*actions.CharacterFightDataSchema, error)
+
+	PostCharacterGathering(
+		ctx context.Context,
+		character string,
+		reqEditor ...RequestEditorFn,
+	) (*actions.SkillDataSchema, error)
+
+	PostCharacterCrafting(
+		ctx context.Context,
+		character string,
+		request actions.CraftingRequestSchema,
+		reqEditor ...RequestEditorFn,
+	) (*actions.SkillDataSchema, error)
+
+	PostCharacterBankDepositItem(
+		ctx context.Context,
+		character string,
+		request actions.BankItemDepositRequestSchema,
+		reqEditor ...RequestEditorFn,
+	) (*actions.BankItemSchema, error)
+
+	PostCharacterBankWithdrawItem(
+		ctx context.Context,
+		character string,
+		request actions.BankItemWithdrawRequestSchema,
+		reqEditor ...RequestEditorFn,
+	) (*actions.BankItemSchema, error)
+
+	PostCharacterBankDepositGold(
+		ctx context.Context,
+		character string,
+		request actions.BankGoldDepositRequestSchema,
+		reqEditor ...RequestEditorFn,
+	) (*actions.GoldTransactionSchema, error)
+
+	PostCharacterBankWithdrawGold(
+		ctx context.Context,
+		character string,
+		request actions.BankGoldWithdrawRequestSchema,
+		reqEditor ...RequestEditorFn,
+	) (*actions.GoldTransactionSchema, error)
 }
 
-func (c *Client) PostCharacterMoveAction(
+func (c *Client) PostCharacterMove(
 	ctx context.Context,
 	character string,
-	request schemas.PositionSchema,
+	request actions.PositionSchema,
 	reqEditors ...RequestEditorFn,
-) (*schemas.CharacterMovementDataSchema, error) {
+) (*actions.CharacterMovementDataSchema, error) {
 	req, err := NewPostMyCharacterActionMoveRequest(c.Server, character, request)
 	if err != nil {
 		return nil, err
@@ -52,7 +115,7 @@ func (c *Client) PostCharacterMoveAction(
 		return nil, err
 	}
 
-	var characterMovementDataResponse *schemas.CharacterMovementDataSchema
+	var characterMovementDataResponse *actions.CharacterMovementDataSchema
 	if err := json.Unmarshal(responseContainer.Data, &characterMovementDataResponse); err != nil {
 		return nil, err
 	}
@@ -63,7 +126,7 @@ func (c *Client) PostCharacterMoveAction(
 func NewPostMyCharacterActionMoveRequest(
 	server string,
 	character string,
-	request schemas.PositionSchema,
+	request actions.PositionSchema,
 ) (*http.Request, error) {
 	var err error
 

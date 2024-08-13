@@ -2,10 +2,10 @@ package mappers
 
 import (
 	"github.com/NChitty/artifactsmmo/pkg/models"
-	"github.com/NChitty/artifactsmmo/pkg/schemas/responses"
+	"github.com/NChitty/artifactsmmo/pkg/schemas"
 )
 
-func ToInventorySlotModel(schema responses.InventorySlotSchema) models.InventorySlot {
+func ToInventorySlotModel(schema schemas.InventorySlotSchema) models.InventorySlot {
 	return models.InventorySlot{
 		Id:       schema.Id,
 		ItemCode: schema.ItemCode,
@@ -13,7 +13,7 @@ func ToInventorySlotModel(schema responses.InventorySlotSchema) models.Inventory
 	}
 }
 
-func ToCharacterModel(schema responses.CharacterSchema, model *models.Character) {
+func ToCharacterModel(schema schemas.CharacterSchema, model *models.Character) {
 	model.Name = schema.Name
 	model.Skin = schema.Skin
 	model.Level = schema.Level
