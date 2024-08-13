@@ -77,3 +77,14 @@ type CharacterSchema struct {
 	InventorySize                   int32                 `json:"inventory_max_items"`
 	Inventory                       []InventorySlotSchema `json:"inventory"`
 }
+
+type LogSchema struct {
+  Character string
+  Account string
+  Type string
+  Description string
+  Content string
+  Cooldown int32
+  Expiration time.Time
+  CreatedAt time.Time
+}
