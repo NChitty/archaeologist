@@ -1,5 +1,5 @@
-module github.com/NChitty/artifactsmmo
+module github.com/NChitty/archaeologist
 
 go 1.22.5
 
-replace github.com/NChitty/artifactsmmo => ../pkg
+replace github.com/NChitty/archaeologist => ../pkg
