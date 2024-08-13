@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/NChitty/artifactsmmo/pkg/schemas"
+	"github.com/NChitty/archaeologist/pkg/schemas"
 )
 
 type ServerClient interface {

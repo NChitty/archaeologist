@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/NChitty/artifactsmmo/pkg/clients"
+	"github.com/NChitty/archaeologist/pkg/clients"
 )
 
 // NewBearerAuthorizationRequestFunc returns a RequestEditorFn that adds the authorization bearer token

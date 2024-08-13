@@ -1,6 +1,6 @@
 package actions
 
-import "github.com/NChitty/artifactsmmo/pkg/schemas"
+import "github.com/NChitty/archaeologist/pkg/schemas"
 
 type GlobalExchangeTransactionRequestSchema struct {
 	Code       string `json:"code"`

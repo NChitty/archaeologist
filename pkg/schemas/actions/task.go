@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/NChitty/artifactsmmo/pkg/schemas"
+	"github.com/NChitty/archaeologist/pkg/schemas"
 )
 
 type TaskType int

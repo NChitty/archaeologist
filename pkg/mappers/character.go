@@ -1,8 +1,8 @@
 package mappers
 
 import (
-	"github.com/NChitty/artifactsmmo/pkg/models"
-	"github.com/NChitty/artifactsmmo/pkg/schemas"
+	"github.com/NChitty/archaeologist/pkg/models"
+	"github.com/NChitty/archaeologist/pkg/schemas"
 )
 
 func ToInventorySlotModel(schema schemas.InventorySlotSchema) models.InventorySlot {

@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/NChitty/artifactsmmo/pkg/schemas"
-	"github.com/NChitty/artifactsmmo/pkg/schemas/actions"
+	"github.com/NChitty/archaeologist/pkg/schemas"
+	"github.com/NChitty/archaeologist/pkg/schemas/actions"
 )
 
 type ActionClient interface {
