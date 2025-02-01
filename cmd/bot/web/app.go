@@ -1,15 +1,13 @@
-package app
+package web
 
 import (
 	"context"
 	"errors"
-	"html/template"
 	"io/fs"
 	"log/slog"
 	"net/http"
 	"time"
 
-	"github.com/NChitty/archaeologist/handler"
 	"github.com/promiseofcake/artifactsmmo-go-client/client"
 )
 
@@ -33,8 +31,8 @@ func New(logger *slog.Logger, templates fs.FS) *App {
 }
 
 func (app *App) Start(ctx context.Context) error {
-	tmpl := template.Must(template.New("").ParseFS(app.templates, "templates/*"))
 	client, err := client.NewClientWithResponses("https://api.artifactsmmo.com/")
+
 	if err != nil {
 		app.logger.Error("Could not create artifacts client")
 		return err
@@ -42,16 +40,7 @@ func (app *App) Start(ctx context.Context) error {
 
 	app.artifactsClient = client
 
-	handler := handler.New(app.logger, tmpl, client)
-	files := http.FileServer(http.Dir("./static"))
-
-	app.router.Handle("GET /static/", http.StripPrefix("/static", files))
-
-	app.router.Handle("GET /login", http.HandlerFunc(handler.LoginPage))
-
-	app.router.Handle("GET /welcome", http.HandlerFunc(handler.Welcome))
-
-	app.router.Handle("POST /login", http.HandlerFunc(handler.Login))
+	app.loadRoutes()
 
 	server := http.Server{
 		Addr:    ":8080",

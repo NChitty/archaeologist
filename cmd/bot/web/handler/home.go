@@ -27,12 +27,13 @@ func New(
 
 func (h *Archaeologist) LoginPage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "text/html")
+
 	h.tmpl.ExecuteTemplate(w, "login.html", nil)
 }
 
 func (h *Archaeologist) Welcome(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "text/html")
-  h.tmpl.ExecuteTemplate(w, "welcome.html", nil)
+	h.tmpl.ExecuteTemplate(w, "welcome.html", nil)
 }
 
 func (h *Archaeologist) Login(w http.ResponseWriter, r *http.Request) {
@@ -40,8 +41,8 @@ func (h *Archaeologist) Login(w http.ResponseWriter, r *http.Request) {
 		context.TODO(),
 		client.NewBasicAuthorizationRequestFunc(r.FormValue("email"), r.FormValue("password")),
 	)
-  if err != nil {
-    h.logger.Error("Invalid login attempt", slog.String("error", err.Error()))
-  }
-  http.Redirect(w, r, "/welcome", http.StatusSeeOther)
+	if err != nil {
+		h.logger.Error("Invalid login attempt", slog.String("error", err.Error()))
+	}
+	http.Redirect(w, r, "/welcome", http.StatusSeeOther)
 }

@@ -1,4 +1,4 @@
-package main
+package bot
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 	"os"
 	"os/signal"
 
-	app "github.com/NChitty/archaeologist/internal"
+	"github.com/NChitty/archaeologist/cmd/bot/web"
 )
 
 //go:embed templates/*.html
@@ -19,7 +19,7 @@ func main() {
   ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
   defer cancel()
 
-  app := app.New(logger, templates)
+  app := web.New(logger, templates)
 	if err := app.Start(ctx); err != nil {
 		logger.Error("Failed to start server", slog.Any("error", err))
 	}
