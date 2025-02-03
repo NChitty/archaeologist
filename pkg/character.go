@@ -2,6 +2,7 @@ package character
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"time"
 
@@ -34,6 +35,22 @@ func (character *Character) GetCharacter() (*artifactsmmo.CharacterSchema, error
 		slog.Error("Could not retrieve character:", err)
 		return nil, err
 	}
+	if characterResp.StatusCode() == 404 {
+		slog.Error("Could not retrieve character", "name", character.Name)
+		return nil, errors.New("Could not retrieve character with name: " + character.Name)
+	}
 
 	return &characterResp.JSON200.Data, nil
+}
+
+func (character *Character) GetInventory() (map[string]artifactsmmo.InventorySlot, error) {
+	characterInfo, err := character.GetCharacter()
+	if err != nil {
+		return nil, err
+	}
+  inventoryMap := make(map[string]artifactsmmo.InventorySlot)
+  for _, slot := range(*characterInfo.Inventory) {
+    inventoryMap[slot.Code] = slot
+  }
+  return inventoryMap, nil
 }

@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"time"
 
 	"github.com/NChitty/archaeologist/cmd/cli/token"
 	character "github.com/NChitty/archaeologist/pkg"
 	"github.com/NChitty/archaeologist/pkg/account"
+	"github.com/NChitty/archaeologist/pkg/actors"
 	artifactsmmo "github.com/promiseofcake/artifactsmmo-go-client/client"
 )
 
@@ -65,8 +65,32 @@ func main() {
 		os.Exit(1)
 	}
 
+	var actor actors.Actor
 	for {
-		actionResult, _ := selectedCharacter.Gather()
-		time.Sleep(actionResult.CooldownRemaining)
+		var code string
+		fmt.Print("Type code of item you would like to gather: ")
+		_, err = fmt.Scanf("%s\n", &code)
+		if err != nil {
+			slog.Error("Did not understand the input:", err)
+			os.Exit(1)
+		}
+
+		var quantity int
+		fmt.Print("Type amount of the item you would like to gather: ")
+		_, err = fmt.Scanf("%d\n", &quantity)
+		if err != nil {
+			slog.Error("Did not understand the input:", err)
+			os.Exit(1)
+		}
+
+		actor, err = actors.New(selectedCharacter, code, quantity)
+		if err != nil {
+      continue;
+		}
+		err = actor.Do()
+		if err != nil {
+      continue;
+		}
+		break
 	}
 }
