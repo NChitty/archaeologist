@@ -8,6 +8,15 @@ import (
 	artifactsmmo "github.com/promiseofcake/artifactsmmo-go-client/client"
 )
 
+type ActionError struct {
+	CooldownExpiration time.Time
+	errorMessage       string
+}
+
+func (actionError *ActionError) Error() string {
+	return actionError.errorMessage
+}
+
 type ActionResult struct {
 	CooldownRemaining time.Duration
 	Success           bool
@@ -27,10 +36,30 @@ func (character *Character) Move(x int, y int) (*ActionResult, error) {
 		return nil, err
 	}
 
-	success := moveResp.StatusCode() == 200
+	if moveResp.StatusCode() == 499 {
+		cooldownError := make(chan error)
+		go character.WaitCooldown(cooldownError)
+		slog.Debug(
+			"Waiting for cooldown",
+			"expiration", character.Character.CooldownExpiration,
+			"timeRemaining", character.Character.CooldownExpiration.Sub(time.Now()),
+		)
+		cooldownError <- err
+		if err != nil {
+			return nil, err
+		}
+		return character.Move(x, y)
+	}
+
+	if moveResp.StatusCode() != 200 {
+		return nil, &ActionError{*character.Character.CooldownExpiration, string(moveResp.Body)}
+	}
+
+	character.Character = &moveResp.JSON200.Data.Character
+
 	return &ActionResult{
 		CooldownRemaining: time.Duration(moveResp.JSON200.Data.Cooldown.RemainingSeconds) * time.Second,
-		Success:           success,
+		Success:           true,
 	}, nil
 }
 
@@ -67,14 +96,26 @@ func (character *Character) Gather() (*ActionResult, error) {
 		return nil, err
 	}
 
-	success := gatherResp.StatusCode() == 200
-  if !success {
+	if gatherResp.StatusCode() == 499 {
+		cooldownError := make(chan error)
+		go character.WaitCooldown(cooldownError)
+		cooldownError <- err
+		if err != nil {
+			return nil, err
+		}
+		return character.Gather()
+	}
 
-  }
-	slog.Debug("Gather response", "StatusCode", gatherResp.StatusCode(), "GatherResult", gatherResp.JSON200.Data.Details, "Cooldown", gatherResp.JSON200.Data.Cooldown)
+
+	if gatherResp.StatusCode() != 200 {
+		return nil, &ActionError{*character.Character.CooldownExpiration, string(gatherResp.Body)}
+	}
+
+	character.Character = &gatherResp.JSON200.Data.Character
+
 	return &ActionResult{
 		CooldownRemaining: time.Duration(gatherResp.JSON200.Data.Cooldown.RemainingSeconds) * time.Second,
-		Success:           success,
+		Success:           true,
 	}, nil
 }
 

@@ -10,8 +10,9 @@ import (
 )
 
 type Character struct {
-	Name   string
-	client *artifactsmmo.ClientWithResponses
+	Name      string
+	Character *artifactsmmo.CharacterSchema
+	client    *artifactsmmo.ClientWithResponses
 }
 
 func New(client *artifactsmmo.ClientWithResponses, name string) (*Character, error) {
@@ -40,6 +41,8 @@ func (character *Character) GetCharacter() (*artifactsmmo.CharacterSchema, error
 		return nil, errors.New("Could not retrieve character with name: " + character.Name)
 	}
 
+	character.Character = &characterResp.JSON200.Data
+
 	return &characterResp.JSON200.Data, nil
 }
 
@@ -48,9 +51,26 @@ func (character *Character) GetInventory() (map[string]artifactsmmo.InventorySlo
 	if err != nil {
 		return nil, err
 	}
-  inventoryMap := make(map[string]artifactsmmo.InventorySlot)
-  for _, slot := range(*characterInfo.Inventory) {
-    inventoryMap[slot.Code] = slot
-  }
-  return inventoryMap, nil
+	inventoryMap := make(map[string]artifactsmmo.InventorySlot)
+	for _, slot := range *characterInfo.Inventory {
+		inventoryMap[slot.Code] = slot
+	}
+	return inventoryMap, nil
+}
+
+func (character *Character) WaitCooldown(error chan error) {
+	charSchema, err := character.GetCharacter()
+	if err != nil {
+		error <- err
+	}
+
+	if time.Now().Before(*charSchema.CooldownExpiration) {
+		slog.Debug(
+			"Waiting for cooldown",
+			"expiration", character.Character.CooldownExpiration,
+			"timeRemaining", character.Character.CooldownExpiration.Sub(time.Now()),
+		)
+		time.Sleep(charSchema.CooldownExpiration.Sub(time.Now()))
+	}
+	error <- nil
 }
