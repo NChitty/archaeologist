@@ -6,14 +6,14 @@ import (
 	"os"
 
 	"github.com/NChitty/archaeologist/cmd/cli/token"
-	character "github.com/NChitty/archaeologist/pkg"
+	"github.com/NChitty/archaeologist/pkg/character"
 	"github.com/NChitty/archaeologist/pkg/account"
 	"github.com/NChitty/archaeologist/pkg/actors"
 	artifactsmmo "github.com/promiseofcake/artifactsmmo-go-client/client"
 )
 
 func main() {
-	//slog.SetLogLoggerLevel(slog.LevelDebug)
+	slog.SetLogLoggerLevel(slog.LevelDebug)
 	client, err := artifactsmmo.NewClientWithResponses("https://api.artifactsmmo.com/")
 	if err != nil {
 		slog.Error("Could not create new web client for artifacts mmo:", err)

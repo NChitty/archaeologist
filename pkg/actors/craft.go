@@ -1,7 +1,7 @@
 package actors
 
 import (
-	character "github.com/NChitty/archaeologist/pkg"
+	"github.com/NChitty/archaeologist/pkg/character"
 	"github.com/NChitty/archaeologist/pkg/artifacts"
 )
 

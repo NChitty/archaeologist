@@ -3,11 +3,12 @@ package actors
 import (
 	"errors"
 	"log/slog"
-	"strings"
+	"math"
+	"slices"
 	"time"
 
-	character "github.com/NChitty/archaeologist/pkg"
 	"github.com/NChitty/archaeologist/pkg/artifacts"
+	"github.com/NChitty/archaeologist/pkg/character"
 	artifactsmmo "github.com/promiseofcake/artifactsmmo-go-client/client"
 )
 
@@ -17,6 +18,8 @@ type GatherActor struct {
 	character    *character.Character
 }
 
+var GatherSkills = [4]string{"mining", "woodcutting", "fishing", "alchemy"}
+
 func New(character *character.Character, goalCode string, goalQuantity int) (*GatherActor, error) {
 	item, err := artifacts.GetItem(goalCode)
 	if err != nil {
@@ -24,31 +27,54 @@ func New(character *character.Character, goalCode string, goalQuantity int) (*Ga
 		return nil, err
 	}
 
-	if item.Craft != nil {
-		slog.Error("This item is not gatherable.")
-		return nil, errors.New(goalCode + " is not gatherable")
+	if item.Type != "resource" {
+		slog.Error("Item is not a resource", "type", item.Type, "subtype", item.Subtype)
+		return nil, errors.New("Item is not resource.")
+	}
+
+	if item.Subtype == "mob" {
+		return nil, errors.ErrUnsupported
+	}
+
+	if !slices.Contains(GatherSkills[:], item.Subtype) {
+		return nil, errors.ErrUnsupported
 	}
 
 	return &GatherActor{GoalItem: item, GoalQuantity: goalQuantity, character: character}, nil
 }
 
 func (gatherActor *GatherActor) Do() error {
-	inventoryMap, err := gatherActor.character.GetInventory()
+	resources, err := artifacts.GetAllResources(
+		(*artifactsmmo.GatheringSkill)(&gatherActor.GoalItem.Subtype),
+		&gatherActor.GoalItem.Code,
+	)
 	if err != nil {
-		slog.Error("Could not retrieve character info:", err)
+		slog.Error("Could not retreive resource with given drop and skill.", err)
 		return err
 	}
 
-	contentType, err := getRelevantContentType(*gatherActor.GoalItem)
-	resourceType, _, _ := strings.Cut(gatherActor.GoalItem.Code, "_")
-	if err != nil {
-		slog.Error("Error getting content type for map query:", err)
-		return err
+	// NOTE: we might want to change this behavior given leveling (optimization todo)
+	resourceCodeMap := make(map[string]artifactsmmo.DropRateSchema)
+	for _, resource := range resources {
+		for _, drop := range resource.Drops {
+			if drop.Code == gatherActor.GoalItem.Code {
+				resourceCodeMap[resource.Code] = drop
+			}
+		}
+	}
+	var resource string
+	lowestRate := math.MaxInt
+	for k, v := range resourceCodeMap {
+		if v.Rate < lowestRate {
+			resource = k
+			lowestRate = v.Rate
+		}
 	}
 
-	maps, err := artifacts.GetAllMaps(contentType, &resourceType)
+	maps, err := artifacts.GetAllMaps(nil, &resource)
 	if err != nil {
 		slog.Error("Could not retrieve all map tiles potentially relevant to gathering resources.", err)
+		return err
 	}
 	if len(maps) == 0 {
 		slog.Error("No maps with type needed to gather resource.", "type", gatherActor.GoalItem.Type)
@@ -56,18 +82,11 @@ func (gatherActor *GatherActor) Do() error {
 	}
 
 	var x, y *int
+  // todo another place for an optimizer
 	for _, cell := range maps {
-		cellContent, err := cell.Content.AsMapContentSchema()
-		if err != nil {
-			slog.Error("Could not parse map content schema:", err)
-			return err
-		}
-
-		if strings.Contains(cellContent.Code, resourceType) {
-			x = &cell.X
-			y = &cell.Y
-			break
-		}
+		x = &cell.X
+		y = &cell.Y
+		break
 	}
 
 	if x == nil || y == nil {
@@ -79,17 +98,18 @@ func (gatherActor *GatherActor) Do() error {
 		return errors.New("Could not find a map cell for gathering resource")
 	}
 
-	character, err := gatherActor.character.GetCharacter()
-	if err != nil {
-		return err
-	}
-
-	if character.X != *x || character.Y != *y {
+	if gatherActor.character.Character.X != *x || gatherActor.character.Character.Y != *y {
 		result, err := gatherActor.character.Move(*x, *y)
 		if err != nil {
 			return err
 		}
 		time.Sleep(result.CooldownRemaining)
+	}
+
+	inventoryMap, err := gatherActor.character.GetInventory()
+	if err != nil {
+		slog.Error("Could not retrieve character info:", err)
+		return err
 	}
 
 	needed := gatherActor.GoalQuantity
@@ -98,39 +118,15 @@ func (gatherActor *GatherActor) Do() error {
 		needed = gatherActor.GoalQuantity - slot.Quantity
 	}
 
-	if strings.Contains(*contentType, "resource") {
-		for i := 0; i < needed; i++ {
-			slog.Debug("Gathering resource", "gatherActionsTaken", i, "needed", needed)
-			actionResult, err := gatherActor.character.Gather()
-			if err != nil {
-				slog.Error("Could not gather resource", err)
-				return err
-			}
-			time.Sleep(actionResult.CooldownRemaining)
+	for i := 0; i < needed; i++ {
+		slog.Debug("Gathering resource", "gatherActionsTaken", i, "needed", needed)
+		actionResult, err := gatherActor.character.Gather()
+		if err != nil {
+			slog.Error("Could not gather resource", err)
+			return err
 		}
+		time.Sleep(actionResult.CooldownRemaining)
 	}
 
 	return nil
-}
-
-func getRelevantContentType(item artifactsmmo.ItemSchema) (*string, error) {
-	var contentType string
-	switch item.Subtype {
-	case "mob":
-		contentType = "monster"
-	case "woodcutting":
-		contentType = "resource"
-	case "mining":
-		contentType = "resource"
-	case "fishing":
-		contentType = "resource"
-	default:
-		contentType = ""
-	}
-
-	if len(contentType) == 0 {
-		return nil, errors.New("Unsupported subtype provided: " + item.Subtype)
-	}
-
-	return &contentType, nil
 }
