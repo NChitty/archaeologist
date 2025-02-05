@@ -37,18 +37,22 @@ func (character *Character) Move(x int, y int) (*ActionResult, error) {
 	}
 
 	if moveResp.StatusCode() == 499 {
-		cooldownError := make(chan error)
-		go character.WaitCooldown(cooldownError)
+		err = character.WaitCooldown()
 		slog.Debug(
 			"Waiting for cooldown",
 			"expiration", character.Character.CooldownExpiration,
 			"timeRemaining", character.Character.CooldownExpiration.Sub(time.Now()),
 		)
-		cooldownError <- err
 		if err != nil {
 			return nil, err
 		}
 		return character.Move(x, y)
+	}
+	if moveResp.StatusCode() == 490 {
+		return &ActionResult{
+			CooldownRemaining: 0 * time.Second,
+			Success:           true,
+		}, nil
 	}
 
 	if moveResp.StatusCode() != 200 {
@@ -76,10 +80,15 @@ func (character *Character) Fight() (*ActionResult, error) {
 		return nil, err
 	}
 
-	success := fightResp.StatusCode() == 200
+	if fightResp.StatusCode() != 200 {
+		return nil, &ActionError{*character.Character.CooldownExpiration, string(fightResp.Body)}
+	}
+
+	character.Character = &fightResp.JSON200.Data.Character
+
 	return &ActionResult{
 		CooldownRemaining: time.Duration(fightResp.JSON200.Data.Cooldown.RemainingSeconds) * time.Second,
-		Success:           success,
+		Success:           true,
 	}, nil
 }
 
@@ -97,15 +106,12 @@ func (character *Character) Gather() (*ActionResult, error) {
 	}
 
 	if gatherResp.StatusCode() == 499 {
-		cooldownError := make(chan error)
-		go character.WaitCooldown(cooldownError)
-		cooldownError <- err
+		err = character.WaitCooldown()
 		if err != nil {
 			return nil, err
 		}
 		return character.Gather()
 	}
-
 
 	if gatherResp.StatusCode() != 200 {
 		return nil, &ActionError{*character.Character.CooldownExpiration, string(gatherResp.Body)}
@@ -115,6 +121,39 @@ func (character *Character) Gather() (*ActionResult, error) {
 
 	return &ActionResult{
 		CooldownRemaining: time.Duration(gatherResp.JSON200.Data.Cooldown.RemainingSeconds) * time.Second,
+		Success:           true,
+	}, nil
+}
+
+func (character *Character) Craft(itemCode string, quantity int) (*ActionResult, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	craftResp, err := character.client.ActionCraftingMyNameActionCraftingPostWithResponse(
+		ctx,
+		character.Name,
+		*&artifactsmmo.CraftingSchema{
+			Code:     itemCode,
+			Quantity: &quantity,
+		},
+	)
+	if err != nil {
+		slog.Error("Could not craft:", err)
+		return nil, err
+	}
+
+	if craftResp.StatusCode() == 499 {
+		err = character.WaitCooldown()
+		if err != nil {
+			return nil, err
+		}
+		return character.Craft(itemCode, quantity)
+	}
+
+	character.Character = &craftResp.JSON200.Data.Character
+
+	return &ActionResult{
+		CooldownRemaining: time.Duration(craftResp.JSON200.Data.Cooldown.RemainingSeconds) * time.Second,
 		Success:           true,
 	}, nil
 }

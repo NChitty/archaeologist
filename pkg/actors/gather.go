@@ -4,7 +4,6 @@ import (
 	"errors"
 	"log/slog"
 	"math"
-	"slices"
 	"time"
 
 	"github.com/NChitty/archaeologist/pkg/artifacts"
@@ -20,27 +19,42 @@ type GatherActor struct {
 
 var GatherSkills = [4]string{"mining", "woodcutting", "fishing", "alchemy"}
 
-func New(character *character.Character, goalCode string, goalQuantity int) (*GatherActor, error) {
+func NewGatherActor(character *character.Character, goalCode string, goalQuantity int) (*GatherActor, error) {
 	item, err := artifacts.GetItem(goalCode)
 	if err != nil {
 		slog.Error("Could not retrieve item info:", err)
 		return nil, err
 	}
 
-	if item.Type != "resource" {
-		slog.Error("Item is not a resource", "type", item.Type, "subtype", item.Subtype)
-		return nil, errors.New("Item is not resource.")
-	}
-
 	if item.Subtype == "mob" {
 		return nil, errors.ErrUnsupported
 	}
 
-	if !slices.Contains(GatherSkills[:], item.Subtype) {
+	if !IsGatherable(item) {
 		return nil, errors.ErrUnsupported
 	}
 
+	slog.Info("Created gathering actor", "item", item, "qty", goalQuantity)
+
 	return &GatherActor{GoalItem: item, GoalQuantity: goalQuantity, character: character}, nil
+}
+
+func IsGatherable(item *artifactsmmo.ItemSchema) bool {
+	if item.Type != "resource" {
+		return false
+	}
+
+	resources, err := artifacts.GetAllResources(nil, &item.Code)
+	if err != nil {
+		slog.Error("Failed to retrieve resources", "code", item.Code, "error", err)
+		return false
+	}
+
+	if len(resources) == 0 {
+		return false
+	}
+
+	return true
 }
 
 func (gatherActor *GatherActor) Do() error {
@@ -82,7 +96,7 @@ func (gatherActor *GatherActor) Do() error {
 	}
 
 	var x, y *int
-  // todo another place for an optimizer
+	// todo another place for an optimizer
 	for _, cell := range maps {
 		x = &cell.X
 		y = &cell.Y
@@ -106,7 +120,7 @@ func (gatherActor *GatherActor) Do() error {
 		time.Sleep(result.CooldownRemaining)
 	}
 
-	inventoryMap, err := gatherActor.character.GetInventory()
+	inventoryMap := gatherActor.character.GetInventory()
 	if err != nil {
 		slog.Error("Could not retrieve character info:", err)
 		return err
@@ -118,14 +132,16 @@ func (gatherActor *GatherActor) Do() error {
 		needed = gatherActor.GoalQuantity - slot.Quantity
 	}
 
-	for i := 0; i < needed; i++ {
-		slog.Debug("Gathering resource", "gatherActionsTaken", i, "needed", needed)
-		actionResult, err := gatherActor.character.Gather()
+	for {
+		_, err := gatherActor.character.Gather()
 		if err != nil {
 			slog.Error("Could not gather resource", err)
 			return err
 		}
-		time.Sleep(actionResult.CooldownRemaining)
+		if gatherActor.character.GetInventory()[gatherActor.GoalItem.Code].Quantity >= needed {
+			slog.Info("Finished gathering", "item", gatherActor.GoalItem, "qty", gatherActor.GoalQuantity)
+			break
+		}
 	}
 
 	return nil

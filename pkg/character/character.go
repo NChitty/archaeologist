@@ -20,11 +20,11 @@ func New(client *artifactsmmo.ClientWithResponses, name string) (*Character, err
 		Name:   name,
 		client: client,
 	}
-	_, err := character.GetCharacter()
+	_, err := character.UpdateCharacter()
 	return character, err
 }
 
-func (character *Character) GetCharacter() (*artifactsmmo.CharacterSchema, error) {
+func (character *Character) UpdateCharacter() (*artifactsmmo.CharacterSchema, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -46,23 +46,20 @@ func (character *Character) GetCharacter() (*artifactsmmo.CharacterSchema, error
 	return &characterResp.JSON200.Data, nil
 }
 
-func (character *Character) GetInventory() (map[string]artifactsmmo.InventorySlot, error) {
-	characterInfo, err := character.GetCharacter()
-	if err != nil {
-		return nil, err
-	}
+func (character *Character) GetInventory() map[string]artifactsmmo.InventorySlot {
 	inventoryMap := make(map[string]artifactsmmo.InventorySlot)
-	for _, slot := range *characterInfo.Inventory {
+	for _, slot := range *character.Character.Inventory {
 		inventoryMap[slot.Code] = slot
 	}
-	return inventoryMap, nil
+	return inventoryMap
 }
 
-func (character *Character) WaitCooldown(error chan error) {
-	charSchema, err := character.GetCharacter()
+func (character *Character) WaitCooldown() error {
+	charSchema, err := character.UpdateCharacter()
 	if err != nil {
-		error <- err
+		return err
 	}
+	character.Character = charSchema
 
 	if time.Now().Before(*charSchema.CooldownExpiration) {
 		slog.Debug(
@@ -72,5 +69,9 @@ func (character *Character) WaitCooldown(error chan error) {
 		)
 		time.Sleep(charSchema.CooldownExpiration.Sub(time.Now()))
 	}
-	error <- nil
+  return nil
+}
+
+func (character *Character) GetLocation() (int, int) {
+  return character.Character.X, character.Character.Y
 }
