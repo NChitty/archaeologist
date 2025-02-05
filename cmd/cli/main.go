@@ -6,9 +6,9 @@ import (
 	"os"
 
 	"github.com/NChitty/archaeologist/cmd/cli/token"
-	"github.com/NChitty/archaeologist/pkg/character"
 	"github.com/NChitty/archaeologist/pkg/account"
 	"github.com/NChitty/archaeologist/pkg/actors"
+	"github.com/NChitty/archaeologist/pkg/character"
 	artifactsmmo "github.com/promiseofcake/artifactsmmo-go-client/client"
 )
 
@@ -66,31 +66,67 @@ func main() {
 	}
 
 	var actor actors.Actor
+	actorQueue := make(chan actors.Actor, 5)
+	defer close(actorQueue)
+	go actorsDo(actorQueue)
+
 	for {
-		var code string
-		fmt.Print("Type code of item you would like to gather: ")
-		_, err = fmt.Scanf("%s\n", &code)
+		fmt.Println("[1] Gather")
+		fmt.Println("[2] Craft")
+		_, err = fmt.Scanf("%d\n", &choice)
 		if err != nil {
-			slog.Error("Did not understand the input:", err)
+			slog.Error("Did not understand the choice:", err)
 			os.Exit(1)
 		}
+		switch choice {
+		case 1:
+			code, qty := ItemInput()
+			actor, err = actors.NewGatherActor(selectedCharacter, code, qty)
+			if err != nil {
+				continue
+			}
+			actorQueue <- actor
+		case 2:
+			code, qty := ItemInput()
+			actor, err = actors.NewCraftingActor(selectedCharacter, code, qty)
+			if err != nil {
+				continue
+			}
+			actorQueue <- actor
+		default:
+			break
+		}
+	}
+}
 
-		var quantity int
-		fmt.Print("Type amount of the item you would like to gather: ")
-		_, err = fmt.Scanf("%d\n", &quantity)
-		if err != nil {
-			slog.Error("Did not understand the input:", err)
-			os.Exit(1)
-		}
+func ItemInput() (string, int) {
+	var code string
+	fmt.Print("Type code of item you would like to gather: ")
+	_, err := fmt.Scanf("%s\n", &code)
+	if err != nil {
+		slog.Error("Did not understand the input:", err)
+		os.Exit(1)
+	}
 
-		actor, err = actors.New(selectedCharacter, code, quantity)
+	var quantity int
+	fmt.Print("Type amount of the item you would like to gather: ")
+	_, err = fmt.Scanf("%d\n", &quantity)
+	if err != nil {
+		slog.Error("Did not understand the input:", err)
+		os.Exit(1)
+	}
+	return code, quantity
+}
+
+func actorsDo(actor chan actors.Actor) {
+	slog.Debug("Waiting for actor")
+	pop := <-actor
+	slog.Debug("Acquired actor", "actor", actor)
+	for {
+		err := pop.Do()
 		if err != nil {
-      continue;
+			slog.Error("Failed to perform action", err)
 		}
-		err = actor.Do()
-		if err != nil {
-      continue;
-		}
-		break
+		pop = <-actor
 	}
 }
