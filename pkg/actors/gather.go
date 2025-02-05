@@ -27,10 +27,12 @@ func NewGatherActor(character *character.Character, goalCode string, goalQuantit
 	}
 
 	if item.Subtype == "mob" {
+		slog.Error("Fighting is not a currently supported operation")
 		return nil, errors.ErrUnsupported
 	}
 
 	if !IsGatherable(item) {
+		slog.Error("This item is not gatherable", "item", *item)
 		return nil, errors.ErrUnsupported
 	}
 
@@ -120,25 +122,13 @@ func (gatherActor *GatherActor) Do() error {
 		time.Sleep(result.CooldownRemaining)
 	}
 
-	inventoryMap := gatherActor.character.GetInventory()
-	if err != nil {
-		slog.Error("Could not retrieve character info:", err)
-		return err
-	}
-
-	needed := gatherActor.GoalQuantity
-	slot, exists := inventoryMap[gatherActor.GoalItem.Code]
-	if exists {
-		needed = gatherActor.GoalQuantity - slot.Quantity
-	}
-
 	for {
 		_, err := gatherActor.character.Gather()
 		if err != nil {
 			slog.Error("Could not gather resource", err)
 			return err
 		}
-		if gatherActor.character.GetInventory()[gatherActor.GoalItem.Code].Quantity >= needed {
+		if gatherActor.character.GetInventory()[gatherActor.GoalItem.Code].Quantity == gatherActor.GoalQuantity {
 			slog.Info("Finished gathering", "item", gatherActor.GoalItem, "qty", gatherActor.GoalQuantity)
 			break
 		}

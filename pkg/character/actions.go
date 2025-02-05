@@ -150,6 +150,9 @@ func (character *Character) Craft(itemCode string, quantity int) (*ActionResult,
 		return character.Craft(itemCode, quantity)
 	}
 
+  slog.Debug("Craft response", "status", craftResp.StatusCode(), "body", string(craftResp.Body))
+
+  slog.Debug("Updating character", "character", craftResp.JSON200.Data.Character)
 	character.Character = &craftResp.JSON200.Data.Character
 
 	return &ActionResult{

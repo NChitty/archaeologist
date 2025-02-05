@@ -36,6 +36,7 @@ func NewCraftingActor(character *character.Character, goalCode string, goalQuant
 	isCraftable := IsCraftable(item)
 
 	if !isCraftable {
+		slog.Error("Item is not craftable", "item", *item)
 		return nil, errors.ErrUnsupported
 	}
 
@@ -62,6 +63,7 @@ func (actor *CraftingActor) Do() error {
 	for _, item := range *actor.craftingRecipe.Items {
 		slot, isPresent := actor.character.GetInventory()[item.Code]
 		needed := item.Quantity * actor.GoalQuantity / *actor.craftingRecipe.Quantity
+		slog.Debug("Checking prereq", "code", item.Code, "qtyNeeded", needed)
 		if isPresent && needed > slot.Quantity {
 			slog.Debug("Do not have sufficient material", "item", item.Code, "qtyNeeded", needed, "qtyHave", slot.Quantity)
 			itemSchema, err := artifacts.GetItem(item.Code)
@@ -70,6 +72,7 @@ func (actor *CraftingActor) Do() error {
 				return err
 			}
 			if !IsCraftable(itemSchema) && !IsGatherable(itemSchema) {
+				slog.Error("Item is not attainable through gathering or crafting", "item", *itemSchema)
 				return errors.ErrUnsupported
 			}
 			if IsGatherable(itemSchema) && IsCraftable(itemSchema) {
@@ -82,8 +85,9 @@ func (actor *CraftingActor) Do() error {
 				if err != nil {
 					return err
 				}
+				continue
 			}
-			if IsGatherable(itemSchema) {
+			if IsGatherable(itemSchema) && !IsCraftable(itemSchema) {
 				prereqActor, err := NewGatherActor(actor.character, item.Code, needed)
 				if err != nil {
 					return err
@@ -92,8 +96,51 @@ func (actor *CraftingActor) Do() error {
 				if err != nil {
 					return err
 				}
+				continue
 			}
-			prereqActor, err := NewCraftingActor(actor.character, item.Code, needed - slot.Quantity)
+			prereqActor, err := NewCraftingActor(actor.character, item.Code, needed-slot.Quantity)
+			if err != nil {
+				return err
+			}
+			err = prereqActor.Do()
+			if err != nil {
+				return err
+			}
+		} else if !isPresent {
+			slog.Debug("Do not have sufficient material", "item", item.Code, "qtyNeeded", needed, "qtyHave", 0)
+			itemSchema, err := artifacts.GetItem(item.Code)
+			if err != nil {
+				slog.Error("Could not retrieve item info:", err)
+				return err
+			}
+			if !IsCraftable(itemSchema) && !IsGatherable(itemSchema) {
+				slog.Error("This item is not gatherable", "item", *itemSchema)
+				return errors.ErrUnsupported
+			}
+			if IsGatherable(itemSchema) && IsCraftable(itemSchema) {
+				// todo optimizer
+				prereqActor, err := NewGatherActor(actor.character, item.Code, needed)
+				if err != nil {
+					return err
+				}
+				err = prereqActor.Do()
+				if err != nil {
+					return err
+				}
+				continue
+			}
+			if IsGatherable(itemSchema) && !IsCraftable(itemSchema) {
+				prereqActor, err := NewGatherActor(actor.character, item.Code, needed)
+				if err != nil {
+					return err
+				}
+				err = prereqActor.Do()
+				if err != nil {
+					return err
+				}
+				continue
+			}
+			prereqActor, err := NewCraftingActor(actor.character, item.Code, needed-slot.Quantity)
 			if err != nil {
 				return err
 			}
@@ -103,6 +150,8 @@ func (actor *CraftingActor) Do() error {
 			}
 		}
 	}
+
+	slog.Debug("Finished gathering prereqs", "item", *actor.GoalItem)
 
 	maps, err := artifacts.GetAllMaps(&workshop, (*string)(actor.craftingRecipe.Skill))
 	if err != nil {
@@ -137,13 +186,7 @@ func (actor *CraftingActor) Do() error {
 	}
 	time.Sleep(moveRes.CooldownRemaining)
 
-	neededQty := actor.GoalQuantity
-	slot, isPresent := actor.character.GetInventory()[actor.GoalItem.Code]
-	if isPresent {
-		neededQty = actor.GoalQuantity - slot.Quantity
-	}
-
-	craftRes, err := actor.character.Craft(actor.GoalItem.Code, neededQty)
+	craftRes, err := actor.character.Craft(actor.GoalItem.Code, actor.GoalQuantity)
 	if err != nil {
 		slog.Error("Failed to craft")
 		return err

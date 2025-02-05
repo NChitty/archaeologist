@@ -64,8 +64,8 @@ func (character *Character) WaitCooldown() error {
 	if time.Now().Before(*charSchema.CooldownExpiration) {
 		slog.Debug(
 			"Waiting for cooldown",
-			"expiration", character.Character.CooldownExpiration,
-			"timeRemaining", character.Character.CooldownExpiration.Sub(time.Now()),
+			"expiration", charSchema.CooldownExpiration,
+			"timeRemaining", charSchema.CooldownExpiration.Sub(time.Now()),
 		)
 		time.Sleep(charSchema.CooldownExpiration.Sub(time.Now()))
 	}
