@@ -15,40 +15,41 @@ type GatherActor struct {
 	GoalItem     *artifactsmmo.ItemSchema
 	GoalQuantity int
 	character    *character.Character
+	logger       *slog.Logger
 }
 
 var GatherSkills = [4]string{"mining", "woodcutting", "fishing", "alchemy"}
 
-func NewGatherActor(character *character.Character, goalCode string, goalQuantity int) (*GatherActor, error) {
-	item, err := artifacts.GetItem(goalCode)
+func NewGatherActor(logger *slog.Logger, character *character.Character, goalCode string, goalQuantity int) (*GatherActor, error) {
+	item, err := artifacts.GetItem(logger, goalCode)
 	if err != nil {
-		slog.Error("Could not retrieve item info:", err)
+		logger.Error("Could not retrieve item info:", err)
 		return nil, err
 	}
 
 	if item.Subtype == "mob" {
-		slog.Error("Fighting is not a currently supported operation")
+		logger.Error("Fighting is not a currently supported operation")
 		return nil, errors.ErrUnsupported
 	}
 
-	if !IsGatherable(item) {
-		slog.Error("This item is not gatherable", "item", *item)
+	if !IsGatherable(logger, item) {
+		logger.Error("This item is not gatherable", "item", *item)
 		return nil, errors.ErrUnsupported
 	}
 
-	slog.Info("Created gathering actor", "item", item, "qty", goalQuantity)
+	logger.Info("Created gathering actor", "item", item, "qty", goalQuantity)
 
-	return &GatherActor{GoalItem: item, GoalQuantity: goalQuantity, character: character}, nil
+	return &GatherActor{GoalItem: item, GoalQuantity: goalQuantity, character: character, logger: logger}, nil
 }
 
-func IsGatherable(item *artifactsmmo.ItemSchema) bool {
+func IsGatherable(logger *slog.Logger, item *artifactsmmo.ItemSchema) bool {
 	if item.Type != "resource" {
 		return false
 	}
 
-	resources, err := artifacts.GetAllResources(nil, &item.Code)
+	resources, err := artifacts.GetAllResources(logger, nil, &item.Code)
 	if err != nil {
-		slog.Error("Failed to retrieve resources", "code", item.Code, "error", err)
+		logger.Error("Failed to retrieve resources", "code", item.Code, "error", err)
 		return false
 	}
 
@@ -59,13 +60,14 @@ func IsGatherable(item *artifactsmmo.ItemSchema) bool {
 	return true
 }
 
-func (gatherActor *GatherActor) Do() error {
+func (actor *GatherActor) Do() error {
 	resources, err := artifacts.GetAllResources(
-		(*artifactsmmo.GatheringSkill)(&gatherActor.GoalItem.Subtype),
-		&gatherActor.GoalItem.Code,
+		actor.logger,
+		(*artifactsmmo.GatheringSkill)(&actor.GoalItem.Subtype),
+		&actor.GoalItem.Code,
 	)
 	if err != nil {
-		slog.Error("Could not retreive resource with given drop and skill.", err)
+		actor.logger.Error("Could not retreive resource with given drop and skill.", err)
 		return err
 	}
 
@@ -73,7 +75,7 @@ func (gatherActor *GatherActor) Do() error {
 	resourceCodeMap := make(map[string]artifactsmmo.DropRateSchema)
 	for _, resource := range resources {
 		for _, drop := range resource.Drops {
-			if drop.Code == gatherActor.GoalItem.Code {
+			if drop.Code == actor.GoalItem.Code {
 				resourceCodeMap[resource.Code] = drop
 			}
 		}
@@ -87,13 +89,13 @@ func (gatherActor *GatherActor) Do() error {
 		}
 	}
 
-	maps, err := artifacts.GetAllMaps(nil, &resource)
+	maps, err := artifacts.GetAllMaps(actor.logger, nil, &resource)
 	if err != nil {
-		slog.Error("Could not retrieve all map tiles potentially relevant to gathering resources.", err)
+		actor.logger.Error("Could not retrieve all map tiles potentially relevant to gathering resources.", err)
 		return err
 	}
 	if len(maps) == 0 {
-		slog.Error("No maps with type needed to gather resource.", "type", gatherActor.GoalItem.Type)
+		actor.logger.Error("No maps with type needed to gather resource.", "type", actor.GoalItem.Type)
 		return errors.New("No maps with subtype needed to gather resource.")
 	}
 
@@ -106,16 +108,16 @@ func (gatherActor *GatherActor) Do() error {
 	}
 
 	if x == nil || y == nil {
-		slog.Error(
+		actor.logger.Error(
 			"Could not try finding map cell for gathering",
 			"itemCode",
-			gatherActor.GoalItem.Code,
+			actor.GoalItem.Code,
 		)
 		return errors.New("Could not find a map cell for gathering resource")
 	}
 
-	if gatherActor.character.Character.X != *x || gatherActor.character.Character.Y != *y {
-		result, err := gatherActor.character.Move(*x, *y)
+	if actor.character.Character.X != *x || actor.character.Character.Y != *y {
+		result, err := actor.character.Move(*x, *y)
 		if err != nil {
 			return err
 		}
@@ -123,13 +125,13 @@ func (gatherActor *GatherActor) Do() error {
 	}
 
 	for {
-		_, err := gatherActor.character.Gather()
+		_, err := actor.character.Gather()
 		if err != nil {
-			slog.Error("Could not gather resource", err)
+			actor.logger.Error("Could not gather resource", err)
 			return err
 		}
-		if gatherActor.character.GetInventory()[gatherActor.GoalItem.Code].Quantity == gatherActor.GoalQuantity {
-			slog.Info("Finished gathering", "item", gatherActor.GoalItem, "qty", gatherActor.GoalQuantity)
+		if actor.character.GetInventory()[actor.GoalItem.Code].Quantity == actor.GoalQuantity {
+			actor.logger.Info("Finished gathering", "item", actor.GoalItem, "qty", actor.GoalQuantity)
 			break
 		}
 	}

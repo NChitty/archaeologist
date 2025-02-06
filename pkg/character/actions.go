@@ -2,7 +2,6 @@ package character
 
 import (
 	"context"
-	"log/slog"
 	"time"
 
 	artifactsmmo "github.com/promiseofcake/artifactsmmo-go-client/client"
@@ -32,13 +31,13 @@ func (character *Character) Move(x int, y int) (*ActionResult, error) {
 		artifactsmmo.DestinationSchema{X: x, Y: y},
 	)
 	if err != nil {
-		slog.Error("Could not move character:", err)
+		character.logger.Error("Could not move character:", err)
 		return nil, err
 	}
 
 	if moveResp.StatusCode() == 499 {
 		err = character.WaitCooldown()
-		slog.Debug(
+		character.logger.Debug(
 			"Waiting for cooldown",
 			"expiration", character.Character.CooldownExpiration,
 			"timeRemaining", character.Character.CooldownExpiration.Sub(time.Now()),
@@ -76,7 +75,7 @@ func (character *Character) Fight() (*ActionResult, error) {
 		character.Name,
 	)
 	if err != nil {
-		slog.Error("Could not fight:", err)
+		character.logger.Error("Could not fight:", err)
 		return nil, err
 	}
 
@@ -101,7 +100,7 @@ func (character *Character) Gather() (*ActionResult, error) {
 		character.Name,
 	)
 	if err != nil {
-		slog.Error("Could not gather:", err)
+		character.logger.Error("Could not gather:", err)
 		return nil, err
 	}
 
@@ -138,7 +137,7 @@ func (character *Character) Craft(itemCode string, quantity int) (*ActionResult,
 		},
 	)
 	if err != nil {
-		slog.Error("Could not craft:", err)
+		character.logger.Error("Could not craft:", err)
 		return nil, err
 	}
 
@@ -150,9 +149,9 @@ func (character *Character) Craft(itemCode string, quantity int) (*ActionResult,
 		return character.Craft(itemCode, quantity)
 	}
 
-  slog.Debug("Craft response", "status", craftResp.StatusCode(), "body", string(craftResp.Body))
+  character.logger.Debug("Craft response", "status", craftResp.StatusCode(), "body", string(craftResp.Body))
 
-  slog.Debug("Updating character", "character", craftResp.JSON200.Data.Character)
+  character.logger.Debug("Updating character", "character", craftResp.JSON200.Data.Character)
 	character.Character = &craftResp.JSON200.Data.Character
 
 	return &ActionResult{

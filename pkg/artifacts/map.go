@@ -8,10 +8,10 @@ import (
 	artifactsmmo "github.com/promiseofcake/artifactsmmo-go-client/client"
 )
 
-func GetAllMaps(contentType *string, contentCode *string) ([]artifactsmmo.MapSchema, error) {
+func GetAllMaps(logger *slog.Logger, contentType *string, contentCode *string) ([]artifactsmmo.MapSchema, error) {
 	client, err := artifactsmmo.NewClientWithResponses("https://api.artifactsmmo.com/")
 	if err != nil {
-		slog.Error("Could not create authentication-less client:", err)
+		logger.Error("Could not create authentication-less client:", err)
 		return nil, err
 	}
 
@@ -27,10 +27,10 @@ func GetAllMaps(contentType *string, contentCode *string) ([]artifactsmmo.MapSch
 			Size:        nil,
 		})
 	if err != nil {
-		slog.Error("Could not retrieve item:", err)
+		logger.Error("Could not retrieve item:", err)
 		return nil, err
 	}
-	slog.Debug("Map response", "map", mapResp.Body)
+	logger.Debug("Map response", "map", mapResp.Body)
 
 	return mapResp.JSON200.Data, nil
 }

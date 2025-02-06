@@ -13,12 +13,14 @@ type Character struct {
 	Name      string
 	Character *artifactsmmo.CharacterSchema
 	client    *artifactsmmo.ClientWithResponses
+	logger    *slog.Logger
 }
 
-func New(client *artifactsmmo.ClientWithResponses, name string) (*Character, error) {
+func New(logger *slog.Logger, client *artifactsmmo.ClientWithResponses, name string) (*Character, error) {
 	character := &Character{
 		Name:   name,
 		client: client,
+    logger: logger,
 	}
 	_, err := character.UpdateCharacter()
 	return character, err
@@ -33,11 +35,11 @@ func (character *Character) UpdateCharacter() (*artifactsmmo.CharacterSchema, er
 		character.Name,
 	)
 	if err != nil {
-		slog.Error("Could not retrieve character:", err)
+		character.logger.Error("Could not retrieve character:", err)
 		return nil, err
 	}
 	if characterResp.StatusCode() == 404 {
-		slog.Error("Could not retrieve character", "name", character.Name)
+		character.logger.Error("Could not retrieve character", "name", character.Name)
 		return nil, errors.New("Could not retrieve character with name: " + character.Name)
 	}
 
@@ -62,16 +64,16 @@ func (character *Character) WaitCooldown() error {
 	character.Character = charSchema
 
 	if time.Now().Before(*charSchema.CooldownExpiration) {
-		slog.Debug(
+		character.logger.Debug(
 			"Waiting for cooldown",
 			"expiration", charSchema.CooldownExpiration,
 			"timeRemaining", charSchema.CooldownExpiration.Sub(time.Now()),
 		)
 		time.Sleep(charSchema.CooldownExpiration.Sub(time.Now()))
 	}
-  return nil
+	return nil
 }
 
 func (character *Character) GetLocation() (int, int) {
-  return character.Character.X, character.Character.Y
+	return character.Character.X, character.Character.Y
 }
