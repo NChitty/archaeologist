@@ -149,9 +149,9 @@ func (character *Character) Craft(itemCode string, quantity int) (*ActionResult,
 		return character.Craft(itemCode, quantity)
 	}
 
-  character.logger.Debug("Craft response", "status", craftResp.StatusCode(), "body", string(craftResp.Body))
+	character.logger.Debug("Craft response", "status", craftResp.StatusCode(), "body", string(craftResp.Body))
 
-  character.logger.Debug("Updating character", "character", craftResp.JSON200.Data.Character)
+	character.logger.Debug("Updating character", "character", craftResp.JSON200.Data.Character)
 	character.Character = &craftResp.JSON200.Data.Character
 
 	return &ActionResult{

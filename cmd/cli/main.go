@@ -20,7 +20,7 @@ func main() {
 		log.Fatal("Could not create log file")
 	}
 
-	logger := slog.New(slog.NewJSONHandler(logFile, &slog.HandlerOptions{AddSource: true, Level: slog.LevelInfo}))
+	logger := slog.New(slog.NewJSONHandler(logFile, &slog.HandlerOptions{Level: slog.LevelInfo}))
 
 	client, err := artifactsmmo.NewClientWithResponses("https://api.artifactsmmo.com/")
 	if err != nil {

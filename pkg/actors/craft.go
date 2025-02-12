@@ -32,7 +32,7 @@ func NewCraftingActor(logger *slog.Logger, character *character.Character, goalC
 		GoalItem:     item,
 		GoalQuantity: goalQuantity,
 		character:    character,
-		logger:    logger,
+		logger:       logger,
 	}
 
 	isCraftable := IsCraftable(item)

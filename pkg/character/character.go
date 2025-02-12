@@ -20,7 +20,7 @@ func New(logger *slog.Logger, client *artifactsmmo.ClientWithResponses, name str
 	character := &Character{
 		Name:   name,
 		client: client,
-    logger: logger,
+		logger: logger,
 	}
 	_, err := character.UpdateCharacter()
 	return character, err
