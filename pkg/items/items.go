@@ -61,3 +61,8 @@ func GetAllResources(logger *slog.Logger, skill *artifactsmmo.GatheringSkill, co
 
 	return resourceResp.JSON200.Data, nil
 }
+
+type Equipment struct {
+  Item artifactsmmo.ItemSchema
+  Quantity int
+}

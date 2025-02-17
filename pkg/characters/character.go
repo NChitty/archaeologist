@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/NChitty/archaeologist/pkg/items"
 	artifactsmmo "github.com/promiseofcake/artifactsmmo-go-client/client"
 )
 
@@ -72,6 +73,47 @@ func (character *Character) WaitCooldown() error {
 		time.Sleep(charSchema.CooldownExpiration.Sub(time.Now()))
 	}
 	return nil
+}
+
+type equipment struct {
+	code     string
+	quantity int
+}
+
+func (character *Character) GetEquipment() *[]items.Equipment {
+	equipmentCodes := []equipment{}
+	equipmentCodes = append(equipmentCodes, equipment{character.Character.WeaponSlot, 1})
+	equipmentCodes = append(equipmentCodes, equipment{character.Character.ShieldSlot, 1})
+	equipmentCodes = append(equipmentCodes, equipment{character.Character.HelmetSlot, 1})
+	equipmentCodes = append(equipmentCodes, equipment{character.Character.BodyArmorSlot, 1})
+	equipmentCodes = append(equipmentCodes, equipment{character.Character.LegArmorSlot, 1})
+	equipmentCodes = append(equipmentCodes, equipment{character.Character.BootsSlot, 1})
+	equipmentCodes = append(equipmentCodes, equipment{character.Character.Ring1Slot, 1})
+	equipmentCodes = append(equipmentCodes, equipment{character.Character.Ring2Slot, 1})
+	equipmentCodes = append(equipmentCodes, equipment{character.Character.AmuletSlot, 1})
+	equipmentCodes = append(equipmentCodes, equipment{character.Character.Artifact1Slot, 1})
+	equipmentCodes = append(equipmentCodes, equipment{character.Character.Artifact2Slot, 1})
+	equipmentCodes = append(equipmentCodes, equipment{character.Character.Artifact3Slot, 1})
+	equipmentCodes = append(equipmentCodes, equipment{character.Character.Utility1Slot, character.Character.Utility1SlotQuantity})
+	equipmentCodes = append(equipmentCodes, equipment{character.Character.Utility2Slot, character.Character.Utility2SlotQuantity})
+
+	equipmentSlots := []items.Equipment{}
+
+	for _, equipment := range equipmentCodes {
+		if equipment.code == "" {
+			continue
+		}
+		item, err := items.GetItem(character.logger, equipment.code)
+		if err != nil {
+			character.logger.Warn("Could not retrieve item", "code", equipment.code, "error", err)
+			continue
+		}
+		equipmentSlots = append(equipmentSlots, items.Equipment{
+			Item:     *item,
+			Quantity: equipment.quantity,
+		})
+	}
+	return &equipmentSlots
 }
 
 func (character *Character) GetLocation() (int, int) {
