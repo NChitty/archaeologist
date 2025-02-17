@@ -1,4 +1,4 @@
-package character
+package characters
 
 import (
 	"context"
@@ -31,7 +31,7 @@ func (character *Character) Move(x int, y int) (*ActionResult, error) {
 		artifactsmmo.DestinationSchema{X: x, Y: y},
 	)
 	if err != nil {
-		character.logger.Error("Could not move character:", err)
+		character.logger.Error("Could not move character", "error", err)
 		return nil, err
 	}
 
@@ -75,7 +75,7 @@ func (character *Character) Fight() (*ActionResult, error) {
 		character.Name,
 	)
 	if err != nil {
-		character.logger.Error("Could not fight:", err)
+		character.logger.Error("Could not fight", "error", err)
 		return nil, err
 	}
 
@@ -100,7 +100,7 @@ func (character *Character) Gather() (*ActionResult, error) {
 		character.Name,
 	)
 	if err != nil {
-		character.logger.Error("Could not gather:", err)
+		character.logger.Error("Could not gather", "error", err)
 		return nil, err
 	}
 
@@ -137,7 +137,7 @@ func (character *Character) Craft(itemCode string, quantity int) (*ActionResult,
 		},
 	)
 	if err != nil {
-		character.logger.Error("Could not craft:", err)
+		character.logger.Error("Could not craft", "error", err)
 		return nil, err
 	}
 

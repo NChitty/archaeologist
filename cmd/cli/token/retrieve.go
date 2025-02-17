@@ -33,14 +33,14 @@ func login(client *artifactsmmo.ClientWithResponses) string {
 	var username string
 	_, err := fmt.Scanf("%s\n", &username)
 	if err != nil {
-		slog.Error("Could not read username: ", err)
+		slog.Error("Could not read username", "error", err)
 		os.Exit(1)
 	}
 
 	fmt.Print("Enter Password: ")
 	bytePassword, err := term.ReadPassword(int(syscall.Stdin))
 	if err != nil {
-		slog.Error("Could read password: ", err)
+		slog.Error("Could read password", "error", err)
 		os.Exit(1)
 	}
 
@@ -51,7 +51,7 @@ func login(client *artifactsmmo.ClientWithResponses) string {
 		artifactsmmo.NewBasicAuthorizationRequestFunc(username, password),
 	)
 	if err != nil {
-		slog.Error("Could not retrieve token response: ", err)
+		slog.Error("Could not retrieve token response", "error", err)
 		os.Exit(1)
 	}
 
@@ -61,13 +61,13 @@ func login(client *artifactsmmo.ClientWithResponses) string {
 
 	file, err := os.Create("user.token")
 	if err != nil {
-		slog.Error("Could not create token file: ", err)
+		slog.Error("Could not create token file", "error", err)
 		return token
 	}
 
 	_, err = file.WriteString(token)
 	if err != nil {
-		slog.Error("Could not write token to file: ", err)
+		slog.Error("Could not write token to file", "error", err)
 	}
 
 	return token

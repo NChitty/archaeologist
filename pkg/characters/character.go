@@ -1,4 +1,4 @@
-package character
+package characters
 
 import (
 	"context"
@@ -35,7 +35,7 @@ func (character *Character) UpdateCharacter() (*artifactsmmo.CharacterSchema, er
 		character.Name,
 	)
 	if err != nil {
-		character.logger.Error("Could not retrieve character:", err)
+		character.logger.Error("Could not retrieve character", "error", err)
 		return nil, err
 	}
 	if characterResp.StatusCode() == 404 {

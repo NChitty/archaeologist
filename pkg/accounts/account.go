@@ -1,4 +1,4 @@
-package account
+package accounts
 
 import (
 	"context"
@@ -20,7 +20,7 @@ func New(client *artifactsmmo.ClientWithResponses) (*Account, error) {
 
 	_, err := account.client.GetMyCharactersMyCharactersGetWithResponse(ctx)
 	if err != nil {
-		slog.Error("Could not retrieve account details: ", err)
+		slog.Error("Could not retrieve account details", "error", err)
 		return nil, err
 	}
 

@@ -1,4 +1,4 @@
-package fight
+package fights
 
 import (
 	"testing"
@@ -11,7 +11,7 @@ func Test(t *testing.T) {
 	type testCase struct {
 		character   *artifactsmmo.CharacterSchema
 		monster     *artifactsmmo.MonsterSchema
-		expectedDmg int
+		expectedDmg uint16
 	}
 	testCases := []testCase{
 		testCase{

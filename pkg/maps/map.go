@@ -1,4 +1,4 @@
-package artifacts
+package maps
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 func GetAllMaps(logger *slog.Logger, contentType *string, contentCode *string) ([]artifactsmmo.MapSchema, error) {
 	client, err := artifactsmmo.NewClientWithResponses("https://api.artifactsmmo.com/")
 	if err != nil {
-		logger.Error("Could not create authentication-less client:", err)
+		logger.Error("Could not create authentication-less client", "error", err)
 		return nil, err
 	}
 
@@ -27,7 +27,7 @@ func GetAllMaps(logger *slog.Logger, contentType *string, contentCode *string) (
 			Size:        nil,
 		})
 	if err != nil {
-		logger.Error("Could not retrieve item:", err)
+		logger.Error("Could not retrieve item", "error", err)
 		return nil, err
 	}
 	logger.Debug("Map response", "map", mapResp.Body)

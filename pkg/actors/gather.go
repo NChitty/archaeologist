@@ -6,24 +6,25 @@ import (
 	"math"
 	"time"
 
-	"github.com/NChitty/archaeologist/pkg/artifacts"
-	"github.com/NChitty/archaeologist/pkg/character"
+	"github.com/NChitty/archaeologist/pkg/characters"
+	"github.com/NChitty/archaeologist/pkg/items"
+	"github.com/NChitty/archaeologist/pkg/maps"
 	artifactsmmo "github.com/promiseofcake/artifactsmmo-go-client/client"
 )
 
 type GatherActor struct {
 	GoalItem     *artifactsmmo.ItemSchema
 	GoalQuantity int
-	character    *character.Character
+	character    *characters.Character
 	logger       *slog.Logger
 }
 
 var GatherSkills = [4]string{"mining", "woodcutting", "fishing", "alchemy"}
 
-func NewGatherActor(logger *slog.Logger, character *character.Character, goalCode string, goalQuantity int) (*GatherActor, error) {
-	item, err := artifacts.GetItem(logger, goalCode)
+func NewGatherActor(logger *slog.Logger, character *characters.Character, goalCode string, goalQuantity int) (*GatherActor, error) {
+	item, err := items.GetItem(logger, goalCode)
 	if err != nil {
-		logger.Error("Could not retrieve item info:", err)
+		logger.Error("Could not retrieve item info", "error", err)
 		return nil, err
 	}
 
@@ -47,7 +48,7 @@ func IsGatherable(logger *slog.Logger, item *artifactsmmo.ItemSchema) bool {
 		return false
 	}
 
-	resources, err := artifacts.GetAllResources(logger, nil, &item.Code)
+	resources, err := items.GetAllResources(logger, nil, &item.Code)
 	if err != nil {
 		logger.Error("Failed to retrieve resources", "code", item.Code, "error", err)
 		return false
@@ -61,13 +62,13 @@ func IsGatherable(logger *slog.Logger, item *artifactsmmo.ItemSchema) bool {
 }
 
 func (actor *GatherActor) Do() error {
-	resources, err := artifacts.GetAllResources(
+	resources, err := items.GetAllResources(
 		actor.logger,
 		(*artifactsmmo.GatheringSkill)(&actor.GoalItem.Subtype),
 		&actor.GoalItem.Code,
 	)
 	if err != nil {
-		actor.logger.Error("Could not retreive resource with given drop and skill.", err)
+		actor.logger.Error("Could not retreive resource with given drop and skill.", "error", err)
 		return err
 	}
 
@@ -89,9 +90,9 @@ func (actor *GatherActor) Do() error {
 		}
 	}
 
-	maps, err := artifacts.GetAllMaps(actor.logger, nil, &resource)
+	maps, err := maps.GetAllMaps(actor.logger, nil, &resource)
 	if err != nil {
-		actor.logger.Error("Could not retrieve all map tiles potentially relevant to gathering resources.", err)
+		actor.logger.Error("Could not retrieve all map tiles potentially relevant to gathering resources.", "error", err)
 		return err
 	}
 	if len(maps) == 0 {
@@ -127,7 +128,7 @@ func (actor *GatherActor) Do() error {
 	for {
 		_, err := actor.character.Gather()
 		if err != nil {
-			actor.logger.Error("Could not gather resource", err)
+			actor.logger.Error("Could not gather resource", "error", err)
 			return err
 		}
 		if actor.character.GetInventory()[actor.GoalItem.Code].Quantity == actor.GoalQuantity {

@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/NChitty/archaeologist/cmd/cli/token"
-	"github.com/NChitty/archaeologist/pkg/account"
+	"github.com/NChitty/archaeologist/pkg/accounts"
 	"github.com/NChitty/archaeologist/pkg/actors"
-	"github.com/NChitty/archaeologist/pkg/character"
+	"github.com/NChitty/archaeologist/pkg/characters"
 	artifactsmmo "github.com/promiseofcake/artifactsmmo-go-client/client"
 )
 
@@ -24,7 +24,7 @@ func main() {
 
 	client, err := artifactsmmo.NewClientWithResponses("https://api.artifactsmmo.com/")
 	if err != nil {
-		logger.Error("Could not create new web client for artifacts mmo:", err)
+		logger.Error("Could not create new web client for artifacts mmo", "error", err)
 		os.Exit(1)
 	}
 
@@ -35,22 +35,22 @@ func main() {
 		artifactsmmo.WithRequestEditorFn(artifactsmmo.NewBearerAuthorizationRequestFunc(token)),
 	)
 	if err != nil {
-		logger.Error("Could not create new web client for artifacts mmo: ", err)
+		logger.Error("Could not create new web client for artifacts mmo", "error", err)
 		os.Exit(1)
 	}
 
-	account, err := account.New(client)
+	account, err := accounts.New(client)
 	if err != nil {
 		os.Exit(1)
 	}
 
-	characters, err := account.GetCharacters()
+	accountCharacters, err := account.GetCharacters()
 	if err != nil {
-		logger.Error("Could not retrieve characters for given account token: ", err)
+		logger.Error("Could not retrieve characters for given account token", "error", err)
 		os.Exit(1)
 	}
 
-	for i, char := range characters {
+	for i, char := range accountCharacters {
 		fmt.Printf("[%1d] Name: %-20s\tLevel: %3d\n", i+1, char.Name, char.Level)
 	}
 
@@ -58,18 +58,18 @@ func main() {
 	fmt.Println("Pick your character from the list.")
 	_, err = fmt.Scanf("%d\n", &choice)
 	if err != nil {
-		logger.Error("Did not understand the choice:", err)
+		logger.Error("Did not understand the choice", "error", err)
 		os.Exit(1)
 	}
 
-	if choice <= 0 || choice > len(characters) {
+	if choice <= 0 || choice > len(accountCharacters) {
 		logger.Error("Invalid choice")
 		os.Exit(1)
 	}
 
-	selectedCharacter, err := character.New(logger, client, characters[choice-1].Name)
+	selectedCharacter, err := characters.New(logger, client, accountCharacters[choice-1].Name)
 	if err != nil {
-		logger.Error("Could not select character:", err)
+		logger.Error("Could not select character", "error", err)
 		os.Exit(1)
 	}
 
@@ -83,7 +83,7 @@ func main() {
 		fmt.Println("[2] Craft")
 		_, err = fmt.Scanf("%d\n", &choice)
 		if err != nil {
-			logger.Error("Did not understand the choice:", err)
+			logger.Error("Did not understand the choice", "error", err)
 			os.Exit(1)
 		}
 		switch choice {
@@ -112,14 +112,14 @@ func ItemInput(logger *slog.Logger) (string, int) {
 	fmt.Print("Type code of item you would like to gather: ")
 	_, err := fmt.Scanf("%s\n", &code)
 	if err != nil {
-		logger.Error("Did not understand the input:", err)
+		logger.Error("Did not understand the input", "error", err)
 	}
 
 	var quantity int
 	fmt.Print("Type amount of the item you would like to gather: ")
 	_, err = fmt.Scanf("%d\n", &quantity)
 	if err != nil {
-		logger.Error("Did not understand the input:", err)
+		logger.Error("Did not understand the input", "error", err)
 	}
 	return code, quantity
 }
@@ -131,7 +131,7 @@ func actorsDo(logger *slog.Logger, actor chan actors.Actor) {
 	for {
 		err := pop.Do()
 		if err != nil {
-			logger.Error("Failed to perform action", err)
+			logger.Error("Failed to perform action", "error", err)
 		}
 		logger.Debug("Waiting for actor")
 		pop = <-actor

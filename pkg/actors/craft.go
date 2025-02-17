@@ -6,8 +6,9 @@ import (
 	"math"
 	"time"
 
-	"github.com/NChitty/archaeologist/pkg/artifacts"
-	"github.com/NChitty/archaeologist/pkg/character"
+	"github.com/NChitty/archaeologist/pkg/maps"
+	"github.com/NChitty/archaeologist/pkg/characters"
+	"github.com/NChitty/archaeologist/pkg/items"
 	artifactsmmo "github.com/promiseofcake/artifactsmmo-go-client/client"
 )
 
@@ -15,16 +16,16 @@ type CraftingActor struct {
 	GoalItem       *artifactsmmo.ItemSchema
 	GoalQuantity   int
 	craftingRecipe *artifactsmmo.CraftSchema
-	character      *character.Character
+	character      *characters.Character
 	logger         *slog.Logger
 }
 
 var workshop string = "workshop"
 
-func NewCraftingActor(logger *slog.Logger, character *character.Character, goalCode string, goalQuantity int) (*CraftingActor, error) {
-	item, err := artifacts.GetItem(logger, goalCode)
+func NewCraftingActor(logger *slog.Logger, character *characters.Character, goalCode string, goalQuantity int) (*CraftingActor, error) {
+	item, err := items.GetItem(logger, goalCode)
 	if err != nil {
-		logger.Error("Could not retrieve item info:", err)
+		logger.Error("Could not retrieve item info", "error", err)
 		return nil, err
 	}
 
@@ -68,9 +69,9 @@ func (actor *CraftingActor) Do() error {
 		actor.logger.Debug("Checking prereq", "code", item.Code, "qtyNeeded", needed)
 		if isPresent && needed > slot.Quantity {
 			actor.logger.Debug("Do not have sufficient material", "item", item.Code, "qtyNeeded", needed, "qtyHave", slot.Quantity)
-			itemSchema, err := artifacts.GetItem(actor.logger, item.Code)
+			itemSchema, err := items.GetItem(actor.logger, item.Code)
 			if err != nil {
-				actor.logger.Error("Could not retrieve item info:", err)
+				actor.logger.Error("Could not retrieve item info", "error", err)
 				return err
 			}
 			if !IsCraftable(itemSchema) && !IsGatherable(actor.logger, itemSchema) {
@@ -110,9 +111,9 @@ func (actor *CraftingActor) Do() error {
 			}
 		} else if !isPresent {
 			actor.logger.Debug("Do not have sufficient material", "item", item.Code, "qtyNeeded", needed, "qtyHave", 0)
-			itemSchema, err := artifacts.GetItem(actor.logger, item.Code)
+			itemSchema, err := items.GetItem(actor.logger, item.Code)
 			if err != nil {
-				actor.logger.Error("Could not retrieve item info:", err)
+				actor.logger.Error("Could not retrieve item info", "error", err)
 				return err
 			}
 			if !IsCraftable(itemSchema) && !IsGatherable(actor.logger, itemSchema) {
@@ -155,9 +156,9 @@ func (actor *CraftingActor) Do() error {
 
 	actor.logger.Debug("Finished gathering prereqs", "item", *actor.GoalItem)
 
-	maps, err := artifacts.GetAllMaps(actor.logger, &workshop, (*string)(actor.craftingRecipe.Skill))
+	maps, err := maps.GetAllMaps(actor.logger, &workshop, (*string)(actor.craftingRecipe.Skill))
 	if err != nil {
-		actor.logger.Error("Could not retrieve all map tiles potentially relevant to gathering resources.", err)
+		actor.logger.Error("Could not retrieve all map tiles potentially relevant to gathering resources.", "error", err)
 		return err
 	}
 	if len(maps) == 0 {
