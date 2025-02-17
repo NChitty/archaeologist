@@ -38,7 +38,7 @@ func NewGatherActor(logger *slog.Logger, character *characters.Character, goalCo
 		return nil, errors.ErrUnsupported
 	}
 
-	logger.Info("Created gathering actor", "item", item, "qty", goalQuantity)
+	logger.Info("Created gathering actor", "item", *item, "qty", goalQuantity)
 
 	return &GatherActor{GoalItem: item, GoalQuantity: goalQuantity, character: character, logger: logger}, nil
 }

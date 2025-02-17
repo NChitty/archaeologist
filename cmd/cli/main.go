@@ -11,6 +11,7 @@ import (
 	"github.com/NChitty/archaeologist/pkg/accounts"
 	"github.com/NChitty/archaeologist/pkg/actors"
 	"github.com/NChitty/archaeologist/pkg/characters"
+	"github.com/phsym/console-slog"
 	artifactsmmo "github.com/promiseofcake/artifactsmmo-go-client/client"
 )
 
@@ -20,7 +21,10 @@ func main() {
 		log.Fatal("Could not create log file")
 	}
 
-	logger := slog.New(slog.NewJSONHandler(logFile, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	logger := slog.New(console.NewHandler(logFile, &console.HandlerOptions{
+		AddSource: true,
+		Level:     slog.LevelInfo,
+	}))
 
 	client, err := artifactsmmo.NewClientWithResponses("https://api.artifactsmmo.com/")
 	if err != nil {

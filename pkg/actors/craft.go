@@ -50,7 +50,7 @@ func NewCraftingActor(logger *slog.Logger, character *characters.Character, goal
 	}
 	actor.craftingRecipe = &craftingRecipe
 
-	actor.logger.Info("Created crafting actor", "item", actor.GoalItem, "qty", actor.GoalQuantity)
+	actor.logger.Info("Created crafting actor", "item", *actor.GoalItem, "qty", actor.GoalQuantity)
 
 	return actor, nil
 }
