@@ -16,13 +16,20 @@ type GatherActor struct {
 	GoalItem     *artifactsmmo.ItemSchema
 	GoalQuantity int
 	character    *characters.Character
+	itemService  *items.ItemService
 	logger       *slog.Logger
 }
 
 var GatherSkills = [4]string{"mining", "woodcutting", "fishing", "alchemy"}
 
-func NewGatherActor(logger *slog.Logger, character *characters.Character, goalCode string, goalQuantity int) (*GatherActor, error) {
-	item, err := items.GetItem(logger, goalCode)
+func NewGatherActor(
+	goalCode string,
+	goalQuantity int,
+	character *characters.Character,
+	itemService *items.ItemService,
+	logger *slog.Logger,
+) (*GatherActor, error) {
+	item, err := itemService.GetItem(goalCode)
 	if err != nil {
 		logger.Error("Could not retrieve item info", "error", err)
 		return nil, err
@@ -40,7 +47,12 @@ func NewGatherActor(logger *slog.Logger, character *characters.Character, goalCo
 
 	logger.Info("Created gathering actor", "item", *item, "qty", goalQuantity)
 
-	return &GatherActor{GoalItem: item, GoalQuantity: goalQuantity, character: character, logger: logger}, nil
+	return &GatherActor{
+    GoalItem: item,
+    GoalQuantity: goalQuantity,
+    character: character,
+    itemService: itemService,
+    logger: logger}, nil
 }
 
 func IsGatherable(logger *slog.Logger, item *artifactsmmo.ItemSchema) bool {
@@ -48,7 +60,7 @@ func IsGatherable(logger *slog.Logger, item *artifactsmmo.ItemSchema) bool {
 		return false
 	}
 
-	resources, err := items.GetAllResources(logger, nil, &item.Code)
+	resources, err := items.DefaultItemService().GetAllResources(nil, &item.Code)
 	if err != nil {
 		logger.Error("Failed to retrieve resources", "code", item.Code, "error", err)
 		return false
@@ -62,8 +74,7 @@ func IsGatherable(logger *slog.Logger, item *artifactsmmo.ItemSchema) bool {
 }
 
 func (actor *GatherActor) Do() error {
-	resources, err := items.GetAllResources(
-		actor.logger,
+	resources, err := actor.itemService.GetAllResources(
 		(*artifactsmmo.GatheringSkill)(&actor.GoalItem.Subtype),
 		&actor.GoalItem.Code,
 	)

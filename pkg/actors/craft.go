@@ -6,9 +6,9 @@ import (
 	"math"
 	"time"
 
-	"github.com/NChitty/archaeologist/pkg/maps"
 	"github.com/NChitty/archaeologist/pkg/characters"
 	"github.com/NChitty/archaeologist/pkg/items"
+	"github.com/NChitty/archaeologist/pkg/maps"
 	artifactsmmo "github.com/promiseofcake/artifactsmmo-go-client/client"
 )
 
@@ -17,13 +17,20 @@ type CraftingActor struct {
 	GoalQuantity   int
 	craftingRecipe *artifactsmmo.CraftSchema
 	character      *characters.Character
+	itemService    *items.ItemService
 	logger         *slog.Logger
 }
 
 var workshop string = "workshop"
 
-func NewCraftingActor(logger *slog.Logger, character *characters.Character, goalCode string, goalQuantity int) (*CraftingActor, error) {
-	item, err := items.GetItem(logger, goalCode)
+func NewCraftingActor(
+	goalCode string,
+	goalQuantity int,
+	character *characters.Character,
+	itemService *items.ItemService,
+	logger *slog.Logger,
+) (*CraftingActor, error) {
+	item, err := itemService.GetItem(goalCode)
 	if err != nil {
 		logger.Error("Could not retrieve item info", "error", err)
 		return nil, err
@@ -33,6 +40,7 @@ func NewCraftingActor(logger *slog.Logger, character *characters.Character, goal
 		GoalItem:     item,
 		GoalQuantity: goalQuantity,
 		character:    character,
+		itemService:  itemService,
 		logger:       logger,
 	}
 
@@ -69,7 +77,7 @@ func (actor *CraftingActor) Do() error {
 		actor.logger.Debug("Checking prereq", "code", item.Code, "qtyNeeded", needed)
 		if isPresent && needed > slot.Quantity {
 			actor.logger.Debug("Do not have sufficient material", "item", item.Code, "qtyNeeded", needed, "qtyHave", slot.Quantity)
-			itemSchema, err := items.GetItem(actor.logger, item.Code)
+			itemSchema, err := actor.itemService.GetItem(item.Code)
 			if err != nil {
 				actor.logger.Error("Could not retrieve item info", "error", err)
 				return err
@@ -80,7 +88,13 @@ func (actor *CraftingActor) Do() error {
 			}
 			if IsGatherable(actor.logger, itemSchema) && IsCraftable(itemSchema) {
 				// todo optimizer
-				prereqActor, err := NewGatherActor(actor.logger, actor.character, item.Code, needed)
+				prereqActor, err := NewGatherActor(
+					item.Code,
+					needed,
+					actor.character,
+					actor.itemService,
+					actor.logger,
+				)
 				if err != nil {
 					return err
 				}
@@ -91,7 +105,13 @@ func (actor *CraftingActor) Do() error {
 				continue
 			}
 			if IsGatherable(actor.logger, itemSchema) && !IsCraftable(itemSchema) {
-				prereqActor, err := NewGatherActor(actor.logger, actor.character, item.Code, needed)
+				prereqActor, err := NewGatherActor(
+					item.Code,
+					needed,
+					actor.character,
+					actor.itemService,
+					actor.logger,
+				)
 				if err != nil {
 					return err
 				}
@@ -101,7 +121,12 @@ func (actor *CraftingActor) Do() error {
 				}
 				continue
 			}
-			prereqActor, err := NewCraftingActor(actor.logger, actor.character, item.Code, needed-slot.Quantity)
+			prereqActor, err := NewCraftingActor(item.Code,
+				needed-slot.Quantity,
+				actor.character,
+				actor.itemService,
+				actor.logger,
+			)
 			if err != nil {
 				return err
 			}
@@ -111,7 +136,7 @@ func (actor *CraftingActor) Do() error {
 			}
 		} else if !isPresent {
 			actor.logger.Debug("Do not have sufficient material", "item", item.Code, "qtyNeeded", needed, "qtyHave", 0)
-			itemSchema, err := items.GetItem(actor.logger, item.Code)
+			itemSchema, err := actor.itemService.GetItem(item.Code)
 			if err != nil {
 				actor.logger.Error("Could not retrieve item info", "error", err)
 				return err
@@ -122,7 +147,13 @@ func (actor *CraftingActor) Do() error {
 			}
 			if IsGatherable(actor.logger, itemSchema) && IsCraftable(itemSchema) {
 				// todo optimizer
-				prereqActor, err := NewGatherActor(actor.logger, actor.character, item.Code, needed)
+				prereqActor, err := NewGatherActor(
+					item.Code,
+					needed,
+					actor.character,
+					actor.itemService,
+					actor.logger,
+				)
 				if err != nil {
 					return err
 				}
@@ -133,7 +164,13 @@ func (actor *CraftingActor) Do() error {
 				continue
 			}
 			if IsGatherable(actor.logger, itemSchema) && !IsCraftable(itemSchema) {
-				prereqActor, err := NewGatherActor(actor.logger, actor.character, item.Code, needed)
+				prereqActor, err := NewGatherActor(
+					item.Code,
+					needed,
+					actor.character,
+					actor.itemService,
+					actor.logger,
+				)
 				if err != nil {
 					return err
 				}
@@ -143,7 +180,13 @@ func (actor *CraftingActor) Do() error {
 				}
 				continue
 			}
-			prereqActor, err := NewCraftingActor(actor.logger, actor.character, item.Code, needed-slot.Quantity)
+			prereqActor, err := NewCraftingActor(
+				item.Code,
+				needed-slot.Quantity,
+				actor.character,
+				actor.itemService,
+				actor.logger,
+			)
 			if err != nil {
 				return err
 			}

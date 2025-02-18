@@ -11,9 +11,12 @@ import (
 	"github.com/NChitty/archaeologist/pkg/accounts"
 	"github.com/NChitty/archaeologist/pkg/actors"
 	"github.com/NChitty/archaeologist/pkg/characters"
+	"github.com/NChitty/archaeologist/pkg/items"
 	"github.com/phsym/console-slog"
 	artifactsmmo "github.com/promiseofcake/artifactsmmo-go-client/client"
 )
+
+var itemService *items.ItemService
 
 func main() {
 	logFile, err := os.Create(fmt.Sprintf("%s.log", time.Now().Format("2006-01-02_15-04")))
@@ -25,6 +28,7 @@ func main() {
 		AddSource: true,
 		Level:     slog.LevelInfo,
 	}))
+	slog.SetDefault(logger)
 
 	client, err := artifactsmmo.NewClientWithResponses("https://api.artifactsmmo.com/")
 	if err != nil {
@@ -77,6 +81,8 @@ func main() {
 		os.Exit(1)
 	}
 
+	itemService = items.DefaultItemService()
+
 	var actor actors.Actor
 	actorQueue := make(chan actors.Actor, 5)
 	defer close(actorQueue)
@@ -93,14 +99,14 @@ func main() {
 		switch choice {
 		case 1:
 			code, qty := ItemInput(logger)
-			actor, err = actors.NewGatherActor(logger, selectedCharacter, code, qty)
+			actor, err = actors.NewGatherActor(code, qty, selectedCharacter, itemService, logger)
 			if err != nil {
 				continue
 			}
 			actorQueue <- actor
 		case 2:
 			code, qty := ItemInput(logger)
-			actor, err = actors.NewCraftingActor(logger, selectedCharacter, code, qty)
+			actor, err = actors.NewCraftingActor(code, qty, selectedCharacter, itemService, logger)
 			if err != nil {
 				continue
 			}
