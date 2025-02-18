@@ -1,0 +1,13 @@
+{
+  "data": {
+    "name": "Copper Ore",
+    "code": "copper_ore",
+    "level": 1,
+    "type": "resource",
+    "subtype": "mining",
+    "description": "",
+    "effects": [],
+    "craft": null,
+    "tradeable": true
+  }
+}
