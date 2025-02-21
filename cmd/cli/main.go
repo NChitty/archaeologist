@@ -11,12 +11,16 @@ import (
 	"github.com/NChitty/archaeologist/pkg/accounts"
 	"github.com/NChitty/archaeologist/pkg/actors"
 	"github.com/NChitty/archaeologist/pkg/characters"
+	"github.com/NChitty/archaeologist/pkg/fights"
 	"github.com/NChitty/archaeologist/pkg/items"
+	"github.com/NChitty/archaeologist/pkg/items/effects"
 	"github.com/phsym/console-slog"
 	artifactsmmo "github.com/promiseofcake/artifactsmmo-go-client/client"
 )
 
 var itemService *items.ItemService
+var effectAccumulator *effects.EffectAccumulator
+var fightServe *fights.FightService
 
 func main() {
 	logFile, err := os.Create(fmt.Sprintf("%s.log", time.Now().Format("2006-01-02_15-04")))

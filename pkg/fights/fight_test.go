@@ -193,10 +193,9 @@ func Test(t *testing.T) {
 		effectsAccumulator := effects.New(slog.Default())
 		service := fights.NewFightService(effectsAccumulator, slog.Default(), itemService)
 		for _, testCase := range testCases {
-			service.Character = &characters.Character{}
-			service.Character.Character = testCase.character
-			service.Monster = testCase.monster
-			fightResult, err := service.CalculateFightResult()
+      character := &characters.Character{}
+			character.Character = testCase.character
+			fightResult, err := service.CalculateFightResult(character, testCase.monster)
 			assert.NoError(t, err)
 			assert.EqualValues(t, testCase.expectedResult, *fightResult)
 		}
