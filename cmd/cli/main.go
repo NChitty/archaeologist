@@ -20,7 +20,7 @@ import (
 
 var itemService *items.ItemService
 var effectAccumulator *effects.EffectAccumulator
-var fightServe *fights.FightService
+var fightService *fights.FightService
 
 func main() {
 	logFile, err := os.Create(fmt.Sprintf("%s.log", time.Now().Format("2006-01-02_15-04")))
@@ -86,6 +86,8 @@ func main() {
 	}
 
 	itemService = items.DefaultItemService()
+	effectAccumulator = effects.New(slog.Default())
+	fightService = fights.NewFightService(effectAccumulator, slog.Default(), itemService)
 
 	var actor actors.Actor
 	actorQueue := make(chan actors.Actor, 5)
