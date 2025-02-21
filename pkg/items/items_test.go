@@ -22,9 +22,6 @@ var dne string
 //go:embed get_item_copper_ore.json
 var copperOre string
 
-//go:embed get_item_copper.json
-var copper string
-
 type mockResponse struct {
 	status     string
 	statusCode int
@@ -61,11 +58,6 @@ func TestGetItem(t *testing.T) {
 					status:     "200 OK",
 					statusCode: 200,
 					response:   copperOre,
-				},
-				"/items/copper": mockResponse{
-					status:     "200 OK",
-					statusCode: 200,
-					response:   copper,
 				},
 			},
 		}),
@@ -104,8 +96,8 @@ func TestGetItem(t *testing.T) {
 	t.Run("Get Item", func(t *testing.T) {
 		for _, testCase := range testCases {
 			item, err := mockItemService.GetItem(testCase.item)
-			assert.Equal(t, testCase.expected.okResult, item)
-			assert.Equal(t, testCase.expected.errResult, err)
+			assert.EqualValues(t, testCase.expected.okResult, item)
+			assert.EqualValues(t, testCase.expected.errResult, err)
 		}
 	})
 }

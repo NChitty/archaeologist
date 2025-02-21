@@ -29,7 +29,10 @@ func DEFAULT() FightResult {
 	}
 }
 
-func CalculateFightResult(character *artifactsmmo.CharacterSchema, monster *artifactsmmo.MonsterSchema) *FightResult {
+func CalculateFightResult(
+	character *artifactsmmo.CharacterSchema,
+	monster *artifactsmmo.MonsterSchema,
+) *FightResult {
 	characterDmg := calculateCharacterDamage(character, monster)
 	_, err := calculateTurns(monster.Hp, characterDmg)
 	result := DEFAULT()
@@ -39,7 +42,10 @@ func CalculateFightResult(character *artifactsmmo.CharacterSchema, monster *arti
 	return &FightResult{}
 }
 
-func calculateCharacterDamage(character *artifactsmmo.CharacterSchema, monster *artifactsmmo.MonsterSchema) uint16 {
+func calculateCharacterDamage(
+	character *artifactsmmo.CharacterSchema,
+	monster *artifactsmmo.MonsterSchema,
+) uint16 {
 	attackAir := float64(character.AttackAir)
 	attackFire := float64(character.AttackFire)
 	attackEarth := float64(character.AttackEarth)
@@ -73,5 +79,47 @@ type monsterResult struct {
 	characterDmg    uint16
 }
 
-func calculateMonsterResult(characterHp int, monster *artifactsmmo.MonsterSchema, maxCharacterTurn uint16, characterDmg uint16) {
+func calculateMonsterResult(
+	characterHp int,
+	monster *artifactsmmo.MonsterSchema,
+	maxCharacterTurn uint16,
+	characterDmg uint16,
+) monsterResult {
+	monsterDmg := calculateMonsterDamage(monster, effectsCumulator)
+	characterMaxHp := characterHp + effectsCumulator.getHp()
+	characterMaxHpWithBoost := characterMaxHp + effectsCumulator.getBoostHp()
+	halfCharacterMaxHpWithBoost := characterMaxHpWithBoost / 2
+	if !effectsCumulator.isRestore() {
+		monsterTurn := calculateTurns(characterMaxHpWithBoost, calculMonsterDamage(monster, effectsCumulator))
+
+		monsterTotalDmg := monsterDmg * math.Max(maxCharacterTurn-1, monsterTurn)
+		return monsterResult{monsterTurn, 0,
+			uint16(math.Max(0, monsterTotalDmg-(characterMaxHpWithBoost-characterMaxHp))), monsterDmg}
+	}
+	halfMonsterTurn := calculTurns(halfCharacterMaxHpWithBoost, calculMonsterDamage(monster, effectsCumulator))
+	if halfMonsterTurn >= maxCharacterTurn {
+		return monsterResult{halfMonsterTurn * 2, 0,
+			uint16(math.Max(0, (maxCharacterTurn-1)*monsterDmg-(characterMaxHpWithBoost-characterMaxHp))),
+			monsterDmg}
+	}
+	monsterTurn := halfMonsterTurn
+	characterHp = characterMaxHpWithBoost - halfMonsterTurn*monsterDmg
+	monsterHp := monster.Hp - halfMonsterTurn*characterDmg
+	restoreTurn := 1
+	for characterHp >= 0 && monsterHp >= 0 {
+		if characterHp < halfCharacterMaxHpWithBoost {
+			restoreValue := effectsCumulator.getRestoreEffectValue(restoreTurn)
+			if restoreValue > 0 {
+				restoreTurn++
+			}
+			characterHp += restoreValue
+		}
+		monsterTurn++
+		monsterHp -= characterDmg
+		if monsterHp > 0 {
+			characterHp -= monsterDmg
+		}
+	}
+	return monsterResult{monsterTurn, uint16(restoreTurn - 1), uint16(math.Max(0, (characterMaxHp - characterHp))),
+		monsterDmg}
 }

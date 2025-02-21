@@ -62,7 +62,7 @@ func IsGatherable(logger *slog.Logger, item *artifactsmmo.ItemSchema) bool {
 
 	resources, err := items.DefaultItemService().GetAllResources(nil, &item.Code)
 	if err != nil {
-		logger.Error("Failed to retrieve resources", "code", item.Code, "error", err)
+		logger.Warn("Failed to retrieve resources", "code", item.Code, "error", err)
 		return false
 	}
 

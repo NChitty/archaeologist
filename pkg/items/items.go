@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/NChitty/archaeologist/pkg/characters"
+	artifactsErrors "github.com/NChitty/archaeologist/pkg/errors"
 	artifactsmmo "github.com/promiseofcake/artifactsmmo-go-client/client"
 )
 
@@ -51,10 +52,10 @@ func (service *ItemService) GetItem(name string) (*artifactsmmo.ItemSchema, erro
 		service.logger.Error("Could not retrieve item", "error", err)
 		return nil, err
 	}
-  if itemResp.StatusCode() == 404 {
-    service.logger.Error("Item not found", "code", name, "response", string(itemResp.Body))
-    return nil, errors.New("Item not found.")
-  }
+	if itemResp.StatusCode() == artifactsErrors.NotFound {
+		service.logger.Error("Item not found", "code", name, "response", string(itemResp.Body))
+		return nil, errors.New("Item not found.")
+	}
 
 	return &itemResp.JSON200.Data, nil
 }
