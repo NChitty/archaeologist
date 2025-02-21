@@ -72,6 +72,9 @@ func (service *FightService) CalculateFightResult() (*FightResult, error) {
 	}
 	monsterResult := service.calculateMonsterResult(characterTurns, characterDmg)
 	numberTurns := characterTurns*2 - 1
+	if monsterResult.monsterTurns < characterTurns {
+		numberTurns = monsterResult.monsterTurns * 2
+	}
 	return &FightResult{
 		monsterResult.monsterTurns >= characterTurns,
 		numberTurns,
@@ -153,7 +156,7 @@ func (service *FightService) calculateMonsterResult(
 			monsterTotalDmg = monsterDmg * (maxCharacterTurn - 1)
 		}
 		return monsterResult{monsterTurn, 0,
-			int(math.Max(0, float64(monsterTotalDmg-(characterMaxHpWithBoost-characterMaxHp)))), monsterDmg}
+			max(0, monsterTotalDmg-(characterMaxHpWithBoost-characterMaxHp)), monsterDmg}
 	}
 	halfMonsterTurn, err := calculateTurns(halfCharacterMaxHpWithBoost, service.calculateMonsterDamage())
 	if err != nil {
@@ -161,7 +164,7 @@ func (service *FightService) calculateMonsterResult(
 	}
 	if halfMonsterTurn >= maxCharacterTurn {
 		return monsterResult{halfMonsterTurn * 2, 0,
-			int(math.Max(0, float64((maxCharacterTurn-1)*monsterDmg-(characterMaxHpWithBoost-characterMaxHp)))),
+			max(0, (maxCharacterTurn-1)*monsterDmg-(characterMaxHpWithBoost-characterMaxHp)),
 			monsterDmg}
 	}
 	monsterTurn := halfMonsterTurn
@@ -182,6 +185,9 @@ func (service *FightService) calculateMonsterResult(
 			characterHp -= monsterDmg
 		}
 	}
-	return monsterResult{monsterTurn, restoreTurns, int(math.Max(0, float64(characterMaxHp-characterHp))),
+	return monsterResult{
+		monsterTurn,
+		restoreTurns,
+		max(0, characterMaxHp-characterHp),
 		monsterDmg}
 }
