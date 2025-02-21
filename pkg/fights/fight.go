@@ -16,7 +16,7 @@ type FightResult struct {
 	Turns           int
 	CharacterTurns  int
 	CharacterHpLoss int
-	RestoreTurn     int
+	RestoreTurns    int
 	CharacterDmg    int
 	MonsterDmg      int
 }
@@ -27,7 +27,7 @@ func DEFAULT() FightResult {
 		Turns:           100,
 		CharacterTurns:  100,
 		CharacterHpLoss: 1000,
-		RestoreTurn:     1000,
+		RestoreTurns:    1000,
 		CharacterDmg:    0,
 		MonsterDmg:      0,
 	}
@@ -87,22 +87,26 @@ func (service *FightService) CalculateFightResult() (*FightResult, error) {
 }
 
 func (service *FightService) calculateCharacterDamage() int {
-	attackAir := float64(service.effectAccumulator.GetEffects()[effects.AttackAir])
-	attackFire := float64(service.effectAccumulator.GetEffects()[effects.AttackFire])
-	attackEarth := float64(service.effectAccumulator.GetEffects()[effects.AttackEarth])
-	attackWater := float64(service.effectAccumulator.GetEffects()[effects.AttackWater])
-	dmgAir := float64(service.effectAccumulator.GetEffects()[effects.DmgAir])
-	dmgFire := float64(service.effectAccumulator.GetEffects()[effects.DmgFire])
-	dmgEarth := float64(service.effectAccumulator.GetEffects()[effects.DmgEarth])
-	dmgWater := float64(service.effectAccumulator.GetEffects()[effects.DmgWater])
+	attackAir := float64(service.effectAccumulator.GetEffect(effects.AttackAir))
+	attackFire := float64(service.effectAccumulator.GetEffect(effects.AttackFire))
+	attackEarth := float64(service.effectAccumulator.GetEffect(effects.AttackEarth))
+	attackWater := float64(service.effectAccumulator.GetEffect(effects.AttackWater))
+	dmgAir := float64(service.effectAccumulator.GetEffect(effects.DmgAir))
+	dmgFire := float64(service.effectAccumulator.GetEffect(effects.DmgFire))
+	dmgEarth := float64(service.effectAccumulator.GetEffect(effects.DmgEarth))
+	dmgWater := float64(service.effectAccumulator.GetEffect(effects.DmgWater))
 	resAir := float64(service.Monster.ResAir)
 	resFire := float64(service.Monster.ResFire)
 	resEarth := float64(service.Monster.ResEarth)
 	resWater := float64(service.Monster.ResWater)
-	dmg := int(math.Round(attackAir*(1+dmgAir/100)*(1-resAir/100))) +
-		int(math.Round(attackFire*(1+dmgFire/100)*(1-resFire/100))) +
-		int(math.Round(attackEarth*(1+dmgEarth/100)*(1-resEarth/100))) +
-		int(math.Round(attackWater*(1+dmgWater/100)*(1-resWater/100)))
+	unblockedDmgAir := math.Round(attackAir * (1 + dmgAir/100))
+	unblockedDmgFire := math.Round(attackFire * (1 + dmgFire/100))
+	unblockedDmgEarth := math.Round(attackEarth * (1 + dmgEarth/100))
+	unblockedDmgWater := math.Round(attackWater * (1 + dmgWater/100))
+	dmg := int(math.Round(unblockedDmgAir*(1-resAir/100))) +
+		int(math.Round(unblockedDmgFire*(1-resFire/100))) +
+		int(math.Round(unblockedDmgEarth*(1-resEarth/100))) +
+		int(math.Round(unblockedDmgWater*(1-resWater/100)))
 	return dmg
 }
 
@@ -126,7 +130,10 @@ func calculateTurns(hp int, dmg int) (int, error) {
 	if dmg == 0 {
 		return 100, errors.New("Dmg is zero")
 	}
-	return int(math.Ceil(float64(hp) / float64(dmg))), nil
+	if hp%dmg == 0 {
+		return hp / dmg, nil
+	}
+	return hp/dmg + 1, nil
 }
 
 type monsterResult struct {
@@ -141,8 +148,8 @@ func (service *FightService) calculateMonsterResult(
 	characterDmg int,
 ) monsterResult {
 	monsterDmg := service.calculateMonsterDamage()
-	characterMaxHp := service.Character.Character.Hp + service.effectAccumulator.GetEffects()[effects.Hp]
-	characterMaxHpWithBoost := characterMaxHp + service.effectAccumulator.GetEffects()[effects.BoostHp]
+	characterMaxHp := service.Character.Character.MaxHp
+	characterMaxHpWithBoost := characterMaxHp + service.effectAccumulator.GetEffect(effects.BoostHp)
 	halfCharacterMaxHpWithBoost := characterMaxHpWithBoost / 2
 	if !service.effectAccumulator.CanRestore() {
 		monsterTurn, err := calculateTurns(characterMaxHpWithBoost, service.calculateMonsterDamage())
@@ -168,10 +175,10 @@ func (service *FightService) calculateMonsterResult(
 			monsterDmg}
 	}
 	monsterTurn := halfMonsterTurn
-	characterHp := characterMaxHpWithBoost - halfMonsterTurn*monsterDmg
-	monsterHp := service.Monster.Hp - halfMonsterTurn*characterDmg
+	characterHp := characterMaxHpWithBoost
+	monsterHp := service.Monster.Hp
 	restoreTurns := 0
-	for characterHp >= 0 && monsterHp >= 0 {
+	for i := 1; characterHp >= 0 && monsterHp >= 0; i += 2 {
 		if characterHp < halfCharacterMaxHpWithBoost {
 			restoreValue := service.effectAccumulator.GetRestoreEffect(restoreTurns)
 			if restoreValue > 0 {

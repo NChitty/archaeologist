@@ -21,7 +21,7 @@ func Test(t *testing.T) {
 	testCases := []testCase{
 		testCase{
 			character: &artifactsmmo.CharacterSchema{
-				Hp:            220,
+				MaxHp:            220,
 				WeaponSlot:    "sticky_sword",
 				ShieldSlot:    "wooden_shield",
 				HelmetSlot:    "copper_helmet",
@@ -63,7 +63,7 @@ func Test(t *testing.T) {
 		},
 		testCase{
 			character: &artifactsmmo.CharacterSchema{
-				Hp:            220,
+				MaxHp:            220,
 				WeaponSlot:    "sticky_sword",
 				ShieldSlot:    "wooden_shield",
 				HelmetSlot:    "copper_helmet",
@@ -105,7 +105,7 @@ func Test(t *testing.T) {
 		},
 		testCase{
 			character: &artifactsmmo.CharacterSchema{
-				Hp:            220,
+				MaxHp:            220,
 				WeaponSlot:    "sticky_sword",
 				ShieldSlot:    "wooden_shield",
 				HelmetSlot:    "copper_helmet",
@@ -143,6 +143,48 @@ func Test(t *testing.T) {
 				0,
 				18,
 				17,
+			},
+		},
+		testCase{
+			character: &artifactsmmo.CharacterSchema{
+				MaxHp:            220,
+				WeaponSlot:    "sticky_sword",
+				ShieldSlot:    "wooden_shield",
+				HelmetSlot:    "copper_helmet",
+				BodyArmorSlot: "copper_armor",
+				LegArmorSlot:  "copper_legs_armor",
+				BootsSlot:     "copper_boots",
+				Ring1Slot:     "copper_ring",
+				Ring2Slot:     "copper_ring",
+				AmuletSlot:    "",
+				Artifact1Slot: "",
+				Artifact2Slot: "",
+				Artifact3Slot: "",
+
+				Utility1Slot:         "small_health_potion",
+				Utility1SlotQuantity: 10,
+				Utility2Slot:         "",
+				Utility2SlotQuantity: 0,
+			},
+			monster: &artifactsmmo.MonsterSchema{
+				Hp:          280,
+				AttackFire:  0,
+				AttackEarth: 0,
+				AttackWater: 0,
+				AttackAir:   21,
+				ResFire:     0,
+				ResEarth:    -30,
+				ResWater:    30,
+				ResAir:      0,
+			},
+			expectedResult: fights.FightResult{
+				true,
+				25,
+				13,
+				100,
+				7,
+				23,
+				20,
 			},
 		},
 	}
