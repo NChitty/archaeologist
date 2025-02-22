@@ -18,6 +18,7 @@ import (
 	artifactsmmo "github.com/promiseofcake/artifactsmmo-go-client/client"
 )
 
+var characterService *characters.CharacterService
 var itemService *items.ItemService
 var effectAccumulator *effects.EffectAccumulator
 var fightService *fights.FightService
@@ -79,18 +80,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	selectedCharacter, err := characters.New(logger, client, accountCharacters[choice-1].Name)
-	if err != nil {
-		logger.Error("Could not select character", "error", err)
-		os.Exit(1)
-	}
-
+  selectedCharacter := characters.FromSchema(accountCharacters[choice-1])
+	characterService := characters.NewCharacterService(logger, client)
 	itemService = items.DefaultItemService()
 	effectAccumulator = effects.New(slog.Default())
 	fightService = fights.NewFightService(effectAccumulator, slog.Default(), itemService)
 
 	var actor actors.Actor
-	actorQueue := make(chan actors.Actor, 5)
+	actorQueue := make(chan struct{actors.Actor; *characters.CharacterWrapper}, 5)
 	defer close(actorQueue)
 	go actorsDo(logger, actorQueue)
 
@@ -105,18 +102,18 @@ func main() {
 		switch choice {
 		case 1:
 			code, qty := ItemInput(logger)
-			actor, err = actors.NewGatherActor(code, qty, selectedCharacter, itemService, logger)
+			actor, err = actors.NewGatherActor(code, qty, characterService, itemService, logger)
 			if err != nil {
 				continue
 			}
-			actorQueue <- actor
+			actorQueue <- struct{actors.Actor; *characters.CharacterWrapper}{actor, selectedCharacter}
 		case 2:
 			code, qty := ItemInput(logger)
-			actor, err = actors.NewCraftingActor(code, qty, selectedCharacter, itemService, logger)
+			actor, err = actors.NewCraftingActor(code, qty, characterService, itemService, logger)
 			if err != nil {
 				continue
 			}
-			actorQueue <- actor
+			actorQueue <- struct{actors.Actor; *characters.CharacterWrapper}{actor, selectedCharacter}
 		default:
 			break
 		}
@@ -140,12 +137,12 @@ func ItemInput(logger *slog.Logger) (string, int) {
 	return code, quantity
 }
 
-func actorsDo(logger *slog.Logger, actor chan actors.Actor) {
+func actorsDo(logger *slog.Logger, actor chan struct{actors.Actor; *characters.CharacterWrapper}) {
 	logger.Debug("Waiting for actor")
 	pop := <-actor
 	logger.Debug("Acquired actor", "actor", actor)
 	for {
-		err := pop.Do()
+		err := pop.Do(pop.CharacterWrapper)
 		if err != nil {
 			logger.Error("Failed to perform action", "error", err)
 		}

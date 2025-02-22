@@ -13,12 +13,12 @@ import (
 )
 
 type CraftingActor struct {
-	GoalItem       *artifactsmmo.ItemSchema
-	GoalQuantity   int
-	craftingRecipe *artifactsmmo.CraftSchema
-	character      *characters.Character
-	itemService    *items.ItemService
-	logger         *slog.Logger
+	GoalItem         *artifactsmmo.ItemSchema
+	GoalQuantity     int
+	craftingRecipe   *artifactsmmo.CraftSchema
+	characterService *characters.CharacterService
+	itemService      *items.ItemService
+	logger           *slog.Logger
 }
 
 var workshop string = "workshop"
@@ -26,7 +26,7 @@ var workshop string = "workshop"
 func NewCraftingActor(
 	goalCode string,
 	goalQuantity int,
-	character *characters.Character,
+	characterService *characters.CharacterService,
 	itemService *items.ItemService,
 	logger *slog.Logger,
 ) (*CraftingActor, error) {
@@ -37,11 +37,11 @@ func NewCraftingActor(
 	}
 
 	actor := &CraftingActor{
-		GoalItem:     item,
-		GoalQuantity: goalQuantity,
-		character:    character,
-		itemService:  itemService,
-		logger:       logger,
+		GoalItem:         item,
+		GoalQuantity:     goalQuantity,
+		characterService: characterService,
+		itemService:      itemService,
+		logger:           logger,
 	}
 
 	isCraftable := IsCraftable(item)
@@ -70,9 +70,9 @@ func IsCraftable(item *artifactsmmo.ItemSchema) bool {
 	return true
 }
 
-func (actor *CraftingActor) Do() error {
+func (actor *CraftingActor) Do(character *characters.CharacterWrapper) error {
 	for _, item := range *actor.craftingRecipe.Items {
-		slot, isPresent := actor.character.GetInventory()[item.Code]
+		slot, isPresent := character.Inventory[item.Code]
 		needed := item.Quantity * actor.GoalQuantity / *actor.craftingRecipe.Quantity
 		actor.logger.Debug("Checking prereq", "code", item.Code, "qtyNeeded", needed)
 		if isPresent && needed > slot.Quantity {
@@ -91,14 +91,14 @@ func (actor *CraftingActor) Do() error {
 				prereqActor, err := NewGatherActor(
 					item.Code,
 					needed,
-					actor.character,
+					actor.characterService,
 					actor.itemService,
 					actor.logger,
 				)
 				if err != nil {
 					return err
 				}
-				err = prereqActor.Do()
+				err = prereqActor.Do(character)
 				if err != nil {
 					return err
 				}
@@ -108,14 +108,14 @@ func (actor *CraftingActor) Do() error {
 				prereqActor, err := NewGatherActor(
 					item.Code,
 					needed,
-					actor.character,
+					actor.characterService,
 					actor.itemService,
 					actor.logger,
 				)
 				if err != nil {
 					return err
 				}
-				err = prereqActor.Do()
+				err = prereqActor.Do(character)
 				if err != nil {
 					return err
 				}
@@ -123,14 +123,14 @@ func (actor *CraftingActor) Do() error {
 			}
 			prereqActor, err := NewCraftingActor(item.Code,
 				needed-slot.Quantity,
-				actor.character,
+				actor.characterService,
 				actor.itemService,
 				actor.logger,
 			)
 			if err != nil {
 				return err
 			}
-			err = prereqActor.Do()
+			err = prereqActor.Do(character)
 			if err != nil {
 				return err
 			}
@@ -150,14 +150,14 @@ func (actor *CraftingActor) Do() error {
 				prereqActor, err := NewGatherActor(
 					item.Code,
 					needed,
-					actor.character,
+					actor.characterService,
 					actor.itemService,
 					actor.logger,
 				)
 				if err != nil {
 					return err
 				}
-				err = prereqActor.Do()
+				err = prereqActor.Do(character)
 				if err != nil {
 					return err
 				}
@@ -167,14 +167,14 @@ func (actor *CraftingActor) Do() error {
 				prereqActor, err := NewGatherActor(
 					item.Code,
 					needed,
-					actor.character,
+					actor.characterService,
 					actor.itemService,
 					actor.logger,
 				)
 				if err != nil {
 					return err
 				}
-				err = prereqActor.Do()
+				err = prereqActor.Do(character)
 				if err != nil {
 					return err
 				}
@@ -183,14 +183,14 @@ func (actor *CraftingActor) Do() error {
 			prereqActor, err := NewCraftingActor(
 				item.Code,
 				needed-slot.Quantity,
-				actor.character,
+				actor.characterService,
 				actor.itemService,
 				actor.logger,
 			)
 			if err != nil {
 				return err
 			}
-			err = prereqActor.Do()
+			err = prereqActor.Do(character)
 			if err != nil {
 				return err
 			}
@@ -208,12 +208,11 @@ func (actor *CraftingActor) Do() error {
 		actor.logger.Error("No maps with type needed to craft resource.", "skill", actor.craftingRecipe.Skill)
 		return errors.New("No maps with subtype needed to gather resource.")
 	}
-	charX, charY := actor.character.GetLocation()
 	minDist := math.MaxInt
 	var dest *artifactsmmo.MapSchema
 	for _, cell := range maps {
-		distX := charX - cell.X
-		distY := charY - cell.Y
+		distX := character.X - cell.X
+		distY := character.Y - cell.Y
 		if distX < 0 {
 			distX *= -1
 		}
@@ -226,13 +225,13 @@ func (actor *CraftingActor) Do() error {
 		}
 	}
 
-	moveRes, err := actor.character.Move(dest.X, dest.Y)
+	moveRes, err := actor.characterService.Move(character, dest.X, dest.Y)
 	if err != nil {
 		return err
 	}
 	time.Sleep(moveRes.CooldownRemaining)
 
-	craftRes, err := actor.character.Craft(actor.GoalItem.Code, actor.GoalQuantity)
+	craftRes, err := actor.characterService.Craft(character, actor.GoalItem.Code, actor.GoalQuantity)
 	if err != nil {
 		actor.logger.Error("Failed to craft")
 		return err

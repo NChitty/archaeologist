@@ -29,7 +29,7 @@ func New(logger *slog.Logger) *EffectAccumulator {
 func (accumulator *EffectAccumulator) Accumulate(equipment *[]items.Equipment) {
 	for _, equipmentItem := range *equipment {
 		for _, effectSchema := range *equipmentItem.Item.Effects {
-			effect := GetEffect(effectSchema.Name)
+			effect := GetEffect(effectSchema.Code)
 			if effect == Restore {
 				accumulator.restore = append(accumulator.restore, RestoreEffect{equipmentItem.Quantity, effectSchema.Value})
 				continue

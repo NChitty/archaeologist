@@ -21,9 +21,9 @@ func TestEffectAccumulator(t *testing.T) {
 			items: &[]items.Equipment{
 				items.Equipment{
 					Item: artifactsmmo.ItemSchema{
-						Effects: &[]artifactsmmo.ItemEffectSchema{
-							artifactsmmo.ItemEffectSchema{
-								Name:  effects.Hp.GetEffectName(),
+						Effects: &[]artifactsmmo.SimpleEffectSchema{
+							artifactsmmo.SimpleEffectSchema{
+								Code:  effects.Hp.GetEffectName(),
 								Value: 25,
 							},
 						},
@@ -32,9 +32,9 @@ func TestEffectAccumulator(t *testing.T) {
 				},
 				items.Equipment{
 					Item: artifactsmmo.ItemSchema{
-						Effects: &[]artifactsmmo.ItemEffectSchema{
-							artifactsmmo.ItemEffectSchema{
-								Name:  effects.Hp.GetEffectName(),
+						Effects: &[]artifactsmmo.SimpleEffectSchema{
+							artifactsmmo.SimpleEffectSchema{
+								Code:  effects.Hp.GetEffectName(),
 								Value: 25,
 							},
 						},
@@ -49,9 +49,9 @@ func TestEffectAccumulator(t *testing.T) {
 			items: &[]items.Equipment{
 				items.Equipment{
 					Item: artifactsmmo.ItemSchema{
-						Effects: &[]artifactsmmo.ItemEffectSchema{
-							artifactsmmo.ItemEffectSchema{
-								Name:  effects.Restore.GetEffectName(),
+						Effects: &[]artifactsmmo.SimpleEffectSchema{
+							artifactsmmo.SimpleEffectSchema{
+								Code:  effects.Restore.GetEffectName(),
 								Value: 20,
 							},
 						},

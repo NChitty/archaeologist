@@ -11,6 +11,7 @@ const (
 	AttackFire
 	AttackWater
 
+	Dmg
 	DmgAir
 	DmgEarth
 	DmgFire
@@ -43,6 +44,7 @@ var effectName = map[ItemEffect]string{
 	AttackFire:  "attack_fire",
 	AttackWater: "attack_water",
 
+	Dmg:      "dmg",
 	DmgAir:   "dmg_air",
 	DmgEarth: "dmg_earth",
 	DmgFire:  "dmg_fire",
@@ -75,6 +77,7 @@ var effect = map[string]ItemEffect{
 	"attack_fire":  AttackFire,
 	"attack_water": AttackWater,
 
+	"dmg":       Dmg,
 	"dmg_air":   DmgAir,
 	"dmg_earth": DmgEarth,
 	"dmg_fire":  DmgFire,
@@ -107,5 +110,5 @@ func GetEffect(effectName string) ItemEffect {
 }
 
 func Effects() map[ItemEffect]string {
-  return effectName
+	return effectName
 }

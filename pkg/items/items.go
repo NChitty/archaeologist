@@ -53,7 +53,6 @@ func (service *ItemService) GetItem(name string) (*artifactsmmo.ItemSchema, erro
 		return nil, err
 	}
 	if itemResp.StatusCode() == artifactsErrors.NotFound {
-		service.logger.Error("Item not found", "code", name, "response", string(itemResp.Body))
 		return nil, errors.New("Item not found.")
 	}
 
@@ -93,27 +92,27 @@ type equipment struct {
 	quantity int
 }
 
-func (service *ItemService) GetCharacterEquipment(character *characters.Character) *[]Equipment {
+func (service *ItemService) GetCharacterEquipment(character *characters.CharacterWrapper) *[]Equipment {
 	equipmentCodes := []equipment{}
-	equipmentCodes = append(equipmentCodes, equipment{character.Character.WeaponSlot, 1})
-	equipmentCodes = append(equipmentCodes, equipment{character.Character.ShieldSlot, 1})
-	equipmentCodes = append(equipmentCodes, equipment{character.Character.HelmetSlot, 1})
-	equipmentCodes = append(equipmentCodes, equipment{character.Character.BodyArmorSlot, 1})
-	equipmentCodes = append(equipmentCodes, equipment{character.Character.LegArmorSlot, 1})
-	equipmentCodes = append(equipmentCodes, equipment{character.Character.BootsSlot, 1})
-	equipmentCodes = append(equipmentCodes, equipment{character.Character.Ring1Slot, 1})
-	equipmentCodes = append(equipmentCodes, equipment{character.Character.Ring2Slot, 1})
-	equipmentCodes = append(equipmentCodes, equipment{character.Character.AmuletSlot, 1})
-	equipmentCodes = append(equipmentCodes, equipment{character.Character.Artifact1Slot, 1})
-	equipmentCodes = append(equipmentCodes, equipment{character.Character.Artifact2Slot, 1})
-	equipmentCodes = append(equipmentCodes, equipment{character.Character.Artifact3Slot, 1})
+	equipmentCodes = append(equipmentCodes, equipment{character.WeaponSlot, 1})
+	equipmentCodes = append(equipmentCodes, equipment{character.ShieldSlot, 1})
+	equipmentCodes = append(equipmentCodes, equipment{character.HelmetSlot, 1})
+	equipmentCodes = append(equipmentCodes, equipment{character.BodyArmorSlot, 1})
+	equipmentCodes = append(equipmentCodes, equipment{character.LegArmorSlot, 1})
+	equipmentCodes = append(equipmentCodes, equipment{character.BootsSlot, 1})
+	equipmentCodes = append(equipmentCodes, equipment{character.Ring1Slot, 1})
+	equipmentCodes = append(equipmentCodes, equipment{character.Ring2Slot, 1})
+	equipmentCodes = append(equipmentCodes, equipment{character.AmuletSlot, 1})
+	equipmentCodes = append(equipmentCodes, equipment{character.Artifact1Slot, 1})
+	equipmentCodes = append(equipmentCodes, equipment{character.Artifact2Slot, 1})
+	equipmentCodes = append(equipmentCodes, equipment{character.Artifact3Slot, 1})
 	equipmentCodes = append(equipmentCodes, equipment{
-		character.Character.Utility1Slot,
-		character.Character.Utility1SlotQuantity,
+		character.Utility1Slot,
+		character.Utility1SlotQuantity,
 	})
 	equipmentCodes = append(equipmentCodes, equipment{
-		character.Character.Utility2Slot,
-		character.Character.Utility2SlotQuantity,
+		character.Utility2Slot,
+		character.Utility2SlotQuantity,
 	})
 
 	equipmentSlots := []Equipment{}

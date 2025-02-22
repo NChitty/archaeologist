@@ -14,14 +14,33 @@ import (
 
 func Test(t *testing.T) {
 	type testCase struct {
-		character      *artifactsmmo.CharacterSchema
+		character      *characters.CharacterWrapper
 		monster        *artifactsmmo.MonsterSchema
 		expectedResult fights.FightResult
 	}
 	testCases := []testCase{
 		testCase{
-			character: &artifactsmmo.CharacterSchema{
-				MaxHp:            220,
+			character: characters.FromSchema(artifactsmmo.CharacterSchema{
+				MaxHp:      120,
+				WeaponSlot: "copper_dagger",
+			}),
+			monster: &artifactsmmo.MonsterSchema{
+				Hp:          60,
+				AttackWater: 4,
+			},
+			expectedResult: fights.FightResult{
+				true,
+				19,
+				10,
+				36,
+				0,
+				6,
+				4,
+			},
+		},
+		testCase{
+			character: characters.FromSchema(artifactsmmo.CharacterSchema{
+				MaxHp:         220,
 				WeaponSlot:    "sticky_sword",
 				ShieldSlot:    "wooden_shield",
 				HelmetSlot:    "copper_helmet",
@@ -39,7 +58,7 @@ func Test(t *testing.T) {
 				Utility1SlotQuantity: 10,
 				Utility2Slot:         "",
 				Utility2SlotQuantity: 0,
-			},
+			}),
 			monster: &artifactsmmo.MonsterSchema{
 				Hp:          70,
 				AttackFire:  0,
@@ -62,8 +81,8 @@ func Test(t *testing.T) {
 			},
 		},
 		testCase{
-			character: &artifactsmmo.CharacterSchema{
-				MaxHp:            220,
+			character: characters.FromSchema(artifactsmmo.CharacterSchema{
+				MaxHp:         220,
 				WeaponSlot:    "sticky_sword",
 				ShieldSlot:    "wooden_shield",
 				HelmetSlot:    "copper_helmet",
@@ -81,7 +100,7 @@ func Test(t *testing.T) {
 				Utility1SlotQuantity: 10,
 				Utility2Slot:         "",
 				Utility2SlotQuantity: 0,
-			},
+			}),
 			monster: &artifactsmmo.MonsterSchema{
 				Hp:          80,
 				AttackFire:  0,
@@ -104,8 +123,8 @@ func Test(t *testing.T) {
 			},
 		},
 		testCase{
-			character: &artifactsmmo.CharacterSchema{
-				MaxHp:            220,
+			character: characters.FromSchema(artifactsmmo.CharacterSchema{
+				MaxHp:         220,
 				WeaponSlot:    "sticky_sword",
 				ShieldSlot:    "wooden_shield",
 				HelmetSlot:    "copper_helmet",
@@ -123,7 +142,7 @@ func Test(t *testing.T) {
 				Utility1SlotQuantity: 10,
 				Utility2Slot:         "",
 				Utility2SlotQuantity: 0,
-			},
+			}),
 			monster: &artifactsmmo.MonsterSchema{
 				Hp:          120,
 				AttackFire:  18,
@@ -139,15 +158,15 @@ func Test(t *testing.T) {
 				true,
 				13,
 				7,
-				102,
+				108,
 				0,
 				18,
-				17,
+				18,
 			},
 		},
 		testCase{
-			character: &artifactsmmo.CharacterSchema{
-				MaxHp:            220,
+			character: characters.FromSchema(artifactsmmo.CharacterSchema{
+				MaxHp:         220,
 				WeaponSlot:    "sticky_sword",
 				ShieldSlot:    "wooden_shield",
 				HelmetSlot:    "copper_helmet",
@@ -165,7 +184,7 @@ func Test(t *testing.T) {
 				Utility1SlotQuantity: 10,
 				Utility2Slot:         "",
 				Utility2SlotQuantity: 0,
-			},
+			}),
 			monster: &artifactsmmo.MonsterSchema{
 				Hp:          280,
 				AttackFire:  0,
@@ -181,10 +200,10 @@ func Test(t *testing.T) {
 				true,
 				25,
 				13,
-				100,
+				112,
 				7,
 				23,
-				20,
+				21,
 			},
 		},
 	}
@@ -193,9 +212,7 @@ func Test(t *testing.T) {
 		effectsAccumulator := effects.New(slog.Default())
 		service := fights.NewFightService(effectsAccumulator, slog.Default(), itemService)
 		for _, testCase := range testCases {
-      character := &characters.Character{}
-			character.Character = testCase.character
-			fightResult, err := service.CalculateFightResult(character, testCase.monster)
+			fightResult, err := service.CalculateFightResult(testCase.character, testCase.monster)
 			assert.NoError(t, err)
 			assert.EqualValues(t, testCase.expectedResult, *fightResult)
 		}

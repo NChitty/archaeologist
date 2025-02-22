@@ -13,11 +13,11 @@ import (
 )
 
 type GatherActor struct {
-	GoalItem     *artifactsmmo.ItemSchema
-	GoalQuantity int
-	character    *characters.Character
-	itemService  *items.ItemService
-	logger       *slog.Logger
+	GoalItem         *artifactsmmo.ItemSchema
+	GoalQuantity     int
+	characterService *characters.CharacterService
+	itemService      *items.ItemService
+	logger           *slog.Logger
 }
 
 var GatherSkills = [4]string{"mining", "woodcutting", "fishing", "alchemy"}
@@ -25,7 +25,7 @@ var GatherSkills = [4]string{"mining", "woodcutting", "fishing", "alchemy"}
 func NewGatherActor(
 	goalCode string,
 	goalQuantity int,
-	character *characters.Character,
+	characterService *characters.CharacterService,
 	itemService *items.ItemService,
 	logger *slog.Logger,
 ) (*GatherActor, error) {
@@ -48,11 +48,11 @@ func NewGatherActor(
 	logger.Info("Created gathering actor", "item", *item, "qty", goalQuantity)
 
 	return &GatherActor{
-    GoalItem: item,
-    GoalQuantity: goalQuantity,
-    character: character,
-    itemService: itemService,
-    logger: logger}, nil
+		GoalItem:         item,
+		GoalQuantity:     goalQuantity,
+		characterService: characterService,
+		itemService:      itemService,
+		logger:           logger}, nil
 }
 
 func IsGatherable(logger *slog.Logger, item *artifactsmmo.ItemSchema) bool {
@@ -73,7 +73,7 @@ func IsGatherable(logger *slog.Logger, item *artifactsmmo.ItemSchema) bool {
 	return true
 }
 
-func (actor *GatherActor) Do() error {
+func (actor *GatherActor) Do(character *characters.CharacterWrapper) error {
 	resources, err := actor.itemService.GetAllResources(
 		(*artifactsmmo.GatheringSkill)(&actor.GoalItem.Subtype),
 		&actor.GoalItem.Code,
@@ -128,8 +128,8 @@ func (actor *GatherActor) Do() error {
 		return errors.New("Could not find a map cell for gathering resource")
 	}
 
-	if actor.character.Character.X != *x || actor.character.Character.Y != *y {
-		result, err := actor.character.Move(*x, *y)
+	if character.X != *x || character.Y != *y {
+		result, err := actor.characterService.Move(character, *x, *y)
 		if err != nil {
 			return err
 		}
@@ -137,12 +137,12 @@ func (actor *GatherActor) Do() error {
 	}
 
 	for {
-		_, err := actor.character.Gather()
+		_, err := actor.characterService.Gather(character)
 		if err != nil {
 			actor.logger.Error("Could not gather resource", "error", err)
 			return err
 		}
-		if actor.character.GetInventory()[actor.GoalItem.Code].Quantity == actor.GoalQuantity {
+		if character.Inventory[actor.GoalItem.Code].Quantity == actor.GoalQuantity {
 			actor.logger.Info("Finished gathering", "item", actor.GoalItem, "qty", actor.GoalQuantity)
 			break
 		}

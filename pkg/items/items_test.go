@@ -87,7 +87,7 @@ func TestGetItem(t *testing.T) {
 				Type:        "resource",
 				Subtype:     "mining",
 				Description: "",
-				Effects:     &[]artifactsmmo.ItemEffectSchema{},
+				Effects:     &[]artifactsmmo.SimpleEffectSchema{},
 				Craft:       nil,
 				Tradeable:   true,
 			}, nil},

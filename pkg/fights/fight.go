@@ -52,7 +52,7 @@ func NewFightService(
 }
 
 func (service *FightService) CalculateFightResult(
-	character *characters.Character,
+	character *characters.CharacterWrapper,
 	monster *artifactsmmo.MonsterSchema,
 ) (*FightResult, error) {
 	equipment := service.itemService.GetCharacterEquipment(character)
@@ -64,7 +64,7 @@ func (service *FightService) CalculateFightResult(
 	if err != nil {
 		return &result, err
 	}
-	monsterResult := service.calculateMonsterResult(monster, character.Character.MaxHp, characterTurns, characterDmg)
+	monsterResult := service.calculateMonsterResult(monster, character.MaxHp, characterTurns, characterDmg)
 	numberTurns := characterTurns*2 - 1
 	if monsterResult.monsterTurns < characterTurns {
 		numberTurns = monsterResult.monsterTurns * 2
@@ -85,6 +85,7 @@ func (service *FightService) calculateCharacterDamage(monster *artifactsmmo.Mons
 	attackFire := float64(service.effectAccumulator.GetEffect(effects.AttackFire))
 	attackEarth := float64(service.effectAccumulator.GetEffect(effects.AttackEarth))
 	attackWater := float64(service.effectAccumulator.GetEffect(effects.AttackWater))
+  dmg := float64(service.effectAccumulator.GetEffect(effects.Dmg))
 	dmgAir := float64(service.effectAccumulator.GetEffect(effects.DmgAir))
 	dmgFire := float64(service.effectAccumulator.GetEffect(effects.DmgFire))
 	dmgEarth := float64(service.effectAccumulator.GetEffect(effects.DmgEarth))
@@ -93,15 +94,15 @@ func (service *FightService) calculateCharacterDamage(monster *artifactsmmo.Mons
 	resFire := float64(monster.ResFire)
 	resEarth := float64(monster.ResEarth)
 	resWater := float64(monster.ResWater)
-	unblockedDmgAir := math.Round(attackAir * (1 + dmgAir/100))
-	unblockedDmgFire := math.Round(attackFire * (1 + dmgFire/100))
-	unblockedDmgEarth := math.Round(attackEarth * (1 + dmgEarth/100))
-	unblockedDmgWater := math.Round(attackWater * (1 + dmgWater/100))
-	dmg := int(math.Round(unblockedDmgAir*(1-resAir/100))) +
+	unblockedDmgAir := math.Round(attackAir * (1 + (dmgAir+dmg)/100))
+	unblockedDmgFire := math.Round(attackFire * (1 + (dmgFire+dmg)/100))
+	unblockedDmgEarth := math.Round(attackEarth * (1 + (dmgEarth+dmg)/100))
+	unblockedDmgWater := math.Round(attackWater * (1 + (dmgWater+dmg)/100))
+	finalDmg := int(math.Round(unblockedDmgAir*(1-resAir/100))) +
 		int(math.Round(unblockedDmgFire*(1-resFire/100))) +
 		int(math.Round(unblockedDmgEarth*(1-resEarth/100))) +
 		int(math.Round(unblockedDmgWater*(1-resWater/100)))
-	return dmg
+	return finalDmg
 }
 
 func (service *FightService) calculateMonsterDamage(monster *artifactsmmo.MonsterSchema) int {
