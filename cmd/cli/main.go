@@ -130,11 +130,12 @@ func main() {
 				*characters.CharacterWrapper
 			}{actor, selectedCharacter}
 		case 3:
-			actor, err := actors.NewTaskFightingActor(selectedCharacter, characterService, fightService, itemService, monsterAccessor, slog.Default())
+			actor, err := actors.NewTaskFightingActor(selectedCharacter, characterService, fightService, itemService, monsterAccessor, logger)
 			if err != nil {
-				fmt.Errorf("Error: %w", err)
+        fmt.Printf("An error occurred: %v\n", err)
 				continue
 			}
+      fmt.Println("Created fighting actor")
 			actorQueue <- struct {
 				actors.Actor
 				*characters.CharacterWrapper

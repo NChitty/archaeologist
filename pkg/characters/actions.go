@@ -206,6 +206,7 @@ func (service *CharacterService) Use(character *CharacterWrapper, item *artifact
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
+  service.logger.Info("Using item", "request", *item)
 	useResp, err := service.client.ActionUseItemMyNameActionUsePostWithResponse(ctx, character.Name, *item)
 	if err != nil {
 		return nil, err

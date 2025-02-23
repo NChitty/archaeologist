@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"math"
 	"sync"
+	"time"
 
 	"github.com/NChitty/archaeologist/pkg/characters"
 	"github.com/NChitty/archaeologist/pkg/fights"
@@ -33,7 +34,7 @@ func NewTaskFightingActor(
 	monsterAccessor *monsters.ClientMonsterAccessor,
 	logger *slog.Logger,
 ) (*TaskFightingActor, error) {
-	if character.TaskType != "monster" {
+	if character.TaskType != "monsters" {
 		return nil, errors.New("Unsupported task type: " + character.TaskType)
 	}
 	logger.Info("Created new Task Fighting Actor", "monster", character.Task, "taskTotal", character.TaskTotal, "taskProgress", character.TaskProgress)
@@ -93,11 +94,20 @@ func (actor *TaskFightingActor) Do(character *characters.CharacterWrapper) error
 		return errors.New("Could not find map cell")
 	}
 
-	for character.TaskProgress < character.TaskTotal {
-		_, err = actor.characterService.Fight(character)
+	if character.X != x || character.Y != y {
+		result, err := actor.characterService.Move(character, x, y)
 		if err != nil {
 			return err
 		}
+		time.Sleep(result.CooldownRemaining)
+	}
+
+	for character.TaskProgress < character.TaskTotal {
+		fightRes, err := actor.characterService.Fight(character)
+		if err != nil {
+			return err
+		}
+		time.Sleep(fightRes.CooldownRemaining)
 
 		if fightResult.RestoreTurns > 0 {
 			fightResult, err = actor.fightService.CalculateFightResult(character, monster)
@@ -131,8 +141,8 @@ func buildUseSchema(character *characters.CharacterWrapper, healingItems map[str
 	}
 	for code, item := range healingItems {
 		effectMap := mapEffects(item.Effects)
-		healing := effectMap[effects.Heal]
-		if float64(targetHealing)/float64(healing) > 1 {
+		healing, present := effectMap[effects.Heal]
+		if present && float64(targetHealing)/float64(healing) > 1 {
 			hasQty := character.Inventory[item.Code].Quantity
 			neededQty := targetHealing / healing
 			qty := neededQty
@@ -141,7 +151,7 @@ func buildUseSchema(character *characters.CharacterWrapper, healingItems map[str
 				delta = healing*hasQty - targetHealing
 				qty = hasQty
 			}
-			if math.Abs(float64(min.delta)) < math.Abs(float64(delta)) {
+			if math.Abs(float64(min.delta)) > math.Abs(float64(delta)) {
 				min.delta = delta
 				min.qty = qty
 				min.code = code
@@ -170,6 +180,9 @@ func getHealingItems(itemAccessor items.ItemAccessor, character *characters.Char
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			if len(slot.Code) == 0 {
+				return
+			}
 			item, err := itemAccessor.GetItem(slot.Code)
 			if err != nil {
 				logger.Warn("Could not get item", "code", slot.Code, "error", err)
@@ -208,11 +221,12 @@ func (actor *TaskFightingActor) heal(character *characters.CharacterWrapper, fig
 		} else {
 			targetHealing := character.MaxHp - character.Hp
 			useSchema := buildUseSchema(character, healingItems, targetHealing)
-			_, err := actor.characterService.Use(character, useSchema)
+			healRes, err := actor.characterService.Use(character, useSchema)
 			if err != nil {
 				actor.logger.Error("Could not use item", "use", *useSchema, "error", err)
 				return err
 			}
+			time.Sleep(healRes.CooldownRemaining)
 		}
 	}
 	return nil
