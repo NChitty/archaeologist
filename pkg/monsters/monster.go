@@ -21,12 +21,19 @@ type MonsterAccessor interface {
 }
 
 type clientMonsterAccessor struct {
-	client *artifactsmmo.ClientWithResponses
+	client artifactsmmo.ClientWithResponsesInterface
 	logger *slog.Logger
 }
 
-func NewClientMonsterAccessor(client *artifactsmmo.ClientWithResponses, logger *slog.Logger) MonsterAccessor {
+func NewClientMonsterAccessor(client artifactsmmo.ClientWithResponsesInterface, logger *slog.Logger) MonsterAccessor {
 	return &clientMonsterAccessor{client, logger}
+}
+
+func orDefault[T any](ptr *T, defaultValue T) T {
+	if ptr != nil {
+		return *ptr
+	}
+	return defaultValue
 }
 
 func (accessor *clientMonsterAccessor) GetAllMonsters(
@@ -39,7 +46,17 @@ func (accessor *clientMonsterAccessor) GetAllMonsters(
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	accessor.logger.Info("Searching for monsters", "minLevel", *minLevel, "maxLevel", *maxLevel, "drop", *drop, "page", *page, "size", *size)
+	accessor.logger.Info("Searching for monsters",
+		"minLevel",
+		orDefault(minLevel, 1),
+		"maxLevel",
+		orDefault(maxLevel, 40),
+		"drop",
+		orDefault(drop, ""),
+		"page",
+		orDefault(page, 1),
+		"size",
+		orDefault(size, 50))
 
 	resp, err := accessor.client.GetAllMonstersMonstersGetWithResponse(
 		ctx,
@@ -67,7 +84,7 @@ func (accessor *clientMonsterAccessor) GetMonster(code string) (*artifactsmmo.Mo
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-  accessor.logger.Info("Searching for monster", "code", code)
+	accessor.logger.Info("Searching for monster", "code", code)
 
 	resp, err := accessor.client.GetMonsterMonstersCodeGetWithResponse(ctx, code)
 	if err != nil {
