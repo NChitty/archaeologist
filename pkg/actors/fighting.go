@@ -49,6 +49,7 @@ func NewTaskFightingActor(
 		characterService: characterService,
 		fightService:     fightService,
 		itemAccessor:     itemAccessor,
+		mapAccessor:      mapAccessor,
 		monsterAccessor:  monsterAccessor,
 		logger:           logger,
 	}, nil

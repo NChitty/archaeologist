@@ -77,12 +77,12 @@ func main() {
 	}
 
 	selectedCharacter := characters.FromSchema(accountCharacters[choice-1])
-  selectedCharacter.Token = token
+	selectedCharacter.Token = token
 	characterService := characters.NewCharacterService(logger, client)
 	itemService = items.DefaultItemService()
 	effectAccumulator = effects.New(slog.Default())
 	fightService = fights.NewFightService(effectAccumulator, slog.Default(), itemService)
-  mapAccessor = maps.NewClientMapAccessor(client, slog.Default())
+	mapAccessor = maps.NewClientMapAccessor(client, slog.Default())
 	monsterAccessor = monsters.NewClientMonsterAccessor(client, slog.Default())
 
 	var actor actors.Actor

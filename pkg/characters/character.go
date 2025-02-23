@@ -10,13 +10,13 @@ import (
 )
 
 type CharacterService struct {
-	client *artifactsmmo.ClientWithResponses
+	client artifactsmmo.ClientWithResponsesInterface
 	logger *slog.Logger
 }
 
 func NewCharacterService(
 	logger *slog.Logger,
-	client *artifactsmmo.ClientWithResponses,
+	client artifactsmmo.ClientWithResponsesInterface,
 ) *CharacterService {
 	character := &CharacterService{
 		client: client,
