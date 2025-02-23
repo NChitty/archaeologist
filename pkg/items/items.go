@@ -18,27 +18,27 @@ type ItemAccessor interface {
 	GetCharacterEquipment(character *characters.CharacterWrapper) *[]Equipment
 }
 
-type ItemService struct {
+type itemService struct {
 	client *artifactsmmo.ClientWithResponses
 	logger *slog.Logger
 }
 
-func NewItemService(logger *slog.Logger, server string, opts ...artifactsmmo.ClientOption) (*ItemService, error) {
+func NewItemService(logger *slog.Logger, server string, opts ...artifactsmmo.ClientOption) (*itemService, error) {
 	client, err := artifactsmmo.NewClientWithResponses("https://api.artifactsmmo.com/", opts...)
 	if err != nil {
 		logger.Error("Could not create authentication-less client", "error", err)
 		return nil, err
 	}
 
-	return &ItemService{
+	return &itemService{
 		client: client,
 		logger: logger,
 	}, nil
 }
 
-var defaultItemService *ItemService
+var defaultItemService *itemService
 
-func DefaultItemService() *ItemService {
+func DefaultItemService() *itemService {
 	if defaultItemService == nil {
 		service, err := NewItemService(slog.Default(), "https://api.artifactsmmo.com/")
 		for err != nil {
@@ -49,7 +49,7 @@ func DefaultItemService() *ItemService {
 	return defaultItemService
 }
 
-func (service *ItemService) GetItem(name string) (*artifactsmmo.ItemSchema, error) {
+func (service *itemService) GetItem(name string) (*artifactsmmo.ItemSchema, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -66,7 +66,7 @@ func (service *ItemService) GetItem(name string) (*artifactsmmo.ItemSchema, erro
 	return &itemResp.JSON200.Data, nil
 }
 
-func (service *ItemService) GetAllResources(skill *artifactsmmo.GatheringSkill, code *string) ([]artifactsmmo.ResourceSchema, error) {
+func (service *itemService) GetAllResources(skill *artifactsmmo.GatheringSkill, code *string) ([]artifactsmmo.ResourceSchema, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -99,7 +99,7 @@ type equipment struct {
 	quantity int
 }
 
-func (service *ItemService) GetCharacterEquipment(character *characters.CharacterWrapper) *[]Equipment {
+func (service *itemService) GetCharacterEquipment(character *characters.CharacterWrapper) *[]Equipment {
 	equipmentCodes := []equipment{}
 	equipmentCodes = append(equipmentCodes, equipment{character.WeaponSlot, 1})
 	equipmentCodes = append(equipmentCodes, equipment{character.ShieldSlot, 1})

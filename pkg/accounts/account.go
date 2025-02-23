@@ -27,11 +27,11 @@ func New(client *artifactsmmo.ClientWithResponses) (*Account, error) {
 	return account, nil
 }
 
-func (account *Account) GetCharacters() ([]artifactsmmo.CharacterSchema, error) {
+func (account *Account) GetCharacters(token string) ([]artifactsmmo.CharacterSchema, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	charactersResponse, err := account.client.GetMyCharactersMyCharactersGetWithResponse(ctx)
+	charactersResponse, err := account.client.GetMyCharactersMyCharactersGetWithResponse(ctx, artifactsmmo.NewBearerAuthorizationRequestFunc(token))
 	if err != nil {
 		return nil, err
 	}

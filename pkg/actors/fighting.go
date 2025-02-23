@@ -23,7 +23,8 @@ type TaskFightingActor struct {
 	characterService *characters.CharacterService
 	fightService     *fights.FightService
 	itemAccessor     items.ItemAccessor
-	monsterAccessor  *monsters.ClientMonsterAccessor
+	mapAccessor      maps.MapAccessor
+	monsterAccessor  monsters.MonsterAccessor
 	logger           *slog.Logger
 }
 
@@ -33,9 +34,10 @@ func NewTaskFightingActor(
 	characterService *characters.CharacterService,
 	fightService *fights.FightService,
 	itemAccessor items.ItemAccessor,
-	monsterAccessor *monsters.ClientMonsterAccessor,
+	mapAccessor maps.MapAccessor,
+	monsterAccessor monsters.MonsterAccessor,
 	logger *slog.Logger,
-) (*TaskFightingActor, error) {
+) (Actor, error) {
 	if character.TaskType != "monsters" {
 		return nil, errors.New("Unsupported task type: " + character.TaskType)
 	}
@@ -74,7 +76,7 @@ func (actor *TaskFightingActor) Do(character *characters.CharacterWrapper) error
 		return err
 	}
 
-	maps, err := maps.GetAllMaps(actor.logger, nil, &actor.monster)
+	maps, err := actor.mapAccessor.GetAllMaps(nil, &actor.monster, nil, nil)
 	if err != nil {
 		actor.logger.Error("Could not retrieve all map tiles potentially relevant to monster.", "monster", actor.monster, "error", err)
 		return err

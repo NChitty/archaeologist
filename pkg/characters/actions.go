@@ -30,6 +30,7 @@ func (service *CharacterService) Move(character *CharacterWrapper, x int, y int)
 		ctx,
 		character.Name,
 		artifactsmmo.DestinationSchema{X: x, Y: y},
+		artifactsmmo.NewBearerAuthorizationRequestFunc(character.Token),
 	)
 	if err != nil {
 		service.logger.Error("Could not move character", "error", err)
@@ -59,7 +60,7 @@ func (service *CharacterService) Move(character *CharacterWrapper, x int, y int)
 		return nil, &ActionError{*character.CooldownExpiration, string(moveResp.Body)}
 	}
 
-	*character = *FromSchema(moveResp.JSON200.Data.Character)
+	character.FromSchema(moveResp.JSON200.Data.Character)
 
 	service.logger.Info(
 		"Completed move",
@@ -87,6 +88,7 @@ func (service *CharacterService) Fight(character *CharacterWrapper) (*ActionResu
 	fightResp, err := service.client.ActionFightMyNameActionFightPostWithResponse(
 		ctx,
 		character.Name,
+		artifactsmmo.NewBearerAuthorizationRequestFunc(character.Token),
 	)
 	if err != nil {
 		service.logger.Error("Could not fight", "error", err)
@@ -97,7 +99,7 @@ func (service *CharacterService) Fight(character *CharacterWrapper) (*ActionResu
 		return nil, &ActionError{*character.CooldownExpiration, string(fightResp.Body)}
 	}
 
-	*character = *FromSchema(fightResp.JSON200.Data.Character)
+	character.FromSchema(fightResp.JSON200.Data.Character)
 
 	return &ActionResult{
 		CooldownRemaining: time.Duration(fightResp.JSON200.Data.Cooldown.RemainingSeconds) * time.Second,
@@ -112,6 +114,7 @@ func (service *CharacterService) Gather(character *CharacterWrapper) (*ActionRes
 	gatherResp, err := service.client.ActionGatheringMyNameActionGatheringPostWithResponse(
 		ctx,
 		character.Name,
+		artifactsmmo.NewBearerAuthorizationRequestFunc(character.Token),
 	)
 	if err != nil {
 		service.logger.Error("Could not gather", "error", err)
@@ -130,7 +133,7 @@ func (service *CharacterService) Gather(character *CharacterWrapper) (*ActionRes
 		return nil, &ActionError{*character.CooldownExpiration, string(gatherResp.Body)}
 	}
 
-	*character = *FromSchema(gatherResp.JSON200.Data.Character)
+	character.FromSchema(gatherResp.JSON200.Data.Character)
 
 	return &ActionResult{
 		CooldownRemaining: time.Duration(gatherResp.JSON200.Data.Cooldown.RemainingSeconds) * time.Second,
@@ -149,6 +152,7 @@ func (service *CharacterService) Craft(character *CharacterWrapper, itemCode str
 			Code:     itemCode,
 			Quantity: &quantity,
 		},
+		artifactsmmo.NewBearerAuthorizationRequestFunc(character.Token),
 	)
 	if err != nil {
 		service.logger.Error("Could not craft", "error", err)
@@ -165,7 +169,7 @@ func (service *CharacterService) Craft(character *CharacterWrapper, itemCode str
 
 	service.logger.Debug("Craft response", "status", craftResp.StatusCode(), "body", string(craftResp.Body))
 
-	*character = *FromSchema(craftResp.JSON200.Data.Character)
+	character.FromSchema(craftResp.JSON200.Data.Character)
 
 	return &ActionResult{
 		CooldownRemaining: time.Duration(craftResp.JSON200.Data.Cooldown.RemainingSeconds) * time.Second,
@@ -177,7 +181,11 @@ func (service *CharacterService) Rest(character *CharacterWrapper) (*ActionResul
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	restResp, err := service.client.ActionRestMyNameActionRestPostWithResponse(ctx, character.Name)
+	restResp, err := service.client.ActionRestMyNameActionRestPostWithResponse(
+		ctx,
+		character.Name,
+		artifactsmmo.NewBearerAuthorizationRequestFunc(character.Token),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -194,7 +202,7 @@ func (service *CharacterService) Rest(character *CharacterWrapper) (*ActionResul
 		return nil, errors.New(string(restResp.Body))
 	}
 
-	*character = *FromSchema(restResp.JSON200.Data.Character)
+	character.FromSchema(restResp.JSON200.Data.Character)
 
 	return &ActionResult{
 		CooldownRemaining: time.Duration(restResp.JSON200.Data.Cooldown.RemainingSeconds) * time.Second,
@@ -206,8 +214,13 @@ func (service *CharacterService) Use(character *CharacterWrapper, item *artifact
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-  service.logger.Info("Using item", "request", *item)
-	useResp, err := service.client.ActionUseItemMyNameActionUsePostWithResponse(ctx, character.Name, *item)
+	service.logger.Info("Using item", "request", *item)
+	useResp, err := service.client.ActionUseItemMyNameActionUsePostWithResponse(
+		ctx,
+		character.Name,
+		*item,
+		artifactsmmo.NewBearerAuthorizationRequestFunc(character.Token),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -224,7 +237,7 @@ func (service *CharacterService) Use(character *CharacterWrapper, item *artifact
 		return nil, errors.New(string(useResp.Body))
 	}
 
-	*character = *FromSchema(useResp.JSON200.Data.Character)
+	character.FromSchema(useResp.JSON200.Data.Character)
 
 	return &ActionResult{
 		CooldownRemaining: time.Duration(useResp.JSON200.Data.Cooldown.RemainingSeconds) * time.Second,

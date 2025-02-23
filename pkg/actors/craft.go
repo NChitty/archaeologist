@@ -17,7 +17,8 @@ type CraftingActor struct {
 	GoalQuantity     int
 	craftingRecipe   *artifactsmmo.CraftSchema
 	characterService *characters.CharacterService
-	itemService      *items.ItemService
+	itemService      items.ItemAccessor
+	mapService       maps.MapAccessor
 	logger           *slog.Logger
 }
 
@@ -27,9 +28,10 @@ func NewCraftingActor(
 	goalCode string,
 	goalQuantity int,
 	characterService *characters.CharacterService,
-	itemService *items.ItemService,
+	itemService items.ItemAccessor,
+	mapService maps.MapAccessor,
 	logger *slog.Logger,
-) (*CraftingActor, error) {
+) (Actor, error) {
 	item, err := itemService.GetItem(goalCode)
 	if err != nil {
 		logger.Error("Could not retrieve item info", "error", err)
@@ -41,6 +43,7 @@ func NewCraftingActor(
 		GoalQuantity:     goalQuantity,
 		characterService: characterService,
 		itemService:      itemService,
+		mapService:       mapService,
 		logger:           logger,
 	}
 
@@ -93,6 +96,7 @@ func (actor *CraftingActor) Do(character *characters.CharacterWrapper) error {
 					needed,
 					actor.characterService,
 					actor.itemService,
+					actor.mapService,
 					actor.logger,
 				)
 				if err != nil {
@@ -110,6 +114,7 @@ func (actor *CraftingActor) Do(character *characters.CharacterWrapper) error {
 					needed,
 					actor.characterService,
 					actor.itemService,
+					actor.mapService,
 					actor.logger,
 				)
 				if err != nil {
@@ -125,6 +130,7 @@ func (actor *CraftingActor) Do(character *characters.CharacterWrapper) error {
 				needed-slot.Quantity,
 				actor.characterService,
 				actor.itemService,
+				actor.mapService,
 				actor.logger,
 			)
 			if err != nil {
@@ -152,6 +158,7 @@ func (actor *CraftingActor) Do(character *characters.CharacterWrapper) error {
 					needed,
 					actor.characterService,
 					actor.itemService,
+					actor.mapService,
 					actor.logger,
 				)
 				if err != nil {
@@ -169,6 +176,7 @@ func (actor *CraftingActor) Do(character *characters.CharacterWrapper) error {
 					needed,
 					actor.characterService,
 					actor.itemService,
+					actor.mapService,
 					actor.logger,
 				)
 				if err != nil {
@@ -185,6 +193,7 @@ func (actor *CraftingActor) Do(character *characters.CharacterWrapper) error {
 				needed-slot.Quantity,
 				actor.characterService,
 				actor.itemService,
+				actor.mapService,
 				actor.logger,
 			)
 			if err != nil {
@@ -199,7 +208,12 @@ func (actor *CraftingActor) Do(character *characters.CharacterWrapper) error {
 
 	actor.logger.Debug("Finished gathering prereqs", "item", *actor.GoalItem)
 
-	maps, err := maps.GetAllMaps(actor.logger, &workshop, (*string)(actor.craftingRecipe.Skill))
+	maps, err := actor.mapService.GetAllMaps(
+		&workshop,
+		(*string)(actor.craftingRecipe.Skill),
+		nil,
+		nil,
+	)
 	if err != nil {
 		actor.logger.Error("Could not retrieve all map tiles potentially relevant to gathering resources.", "error", err)
 		return err

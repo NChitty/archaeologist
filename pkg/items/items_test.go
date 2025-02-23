@@ -1,4 +1,4 @@
-package items_test
+package items
 
 import (
 	"bytes"
@@ -9,12 +9,11 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/NChitty/archaeologist/pkg/items"
 	artifactsmmo "github.com/promiseofcake/artifactsmmo-go-client/client"
 	"github.com/stretchr/testify/assert"
 )
 
-var mockItemService *items.ItemService
+var mockItemService *itemService
 
 //go:embed get_item_dne.json
 var dne string
@@ -44,7 +43,7 @@ func (client mockHttpClient) Do(req *http.Request) (*http.Response, error) {
 }
 
 func TestGetItem(t *testing.T) {
-	mockItemService, err := items.NewItemService(
+	mockItemService, err := NewItemService(
 		slog.Default(),
 		"none",
 		artifactsmmo.WithHTTPClient(mockHttpClient{

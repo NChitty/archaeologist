@@ -21,7 +21,7 @@ type FightResult struct {
 	MonsterDmg      int
 }
 
-func DEFAULT() FightResult {
+func defaultFightResult() FightResult {
 	return FightResult{
 		Win:             false,
 		Turns:           100,
@@ -36,13 +36,13 @@ func DEFAULT() FightResult {
 type FightService struct {
 	effectAccumulator *effects.EffectAccumulator
 	logger            *slog.Logger
-	itemService       *items.ItemService
+	itemService       items.ItemAccessor
 }
 
 func NewFightService(
 	effectAccumulator *effects.EffectAccumulator,
 	logger *slog.Logger,
-	itemService *items.ItemService,
+	itemService items.ItemAccessor,
 ) *FightService {
 	return &FightService{
 		effectAccumulator: effectAccumulator,
@@ -60,7 +60,7 @@ func (service *FightService) CalculateFightResult(
 	service.effectAccumulator.Accumulate(equipment)
 	characterDmg := service.calculateCharacterDamage(monster)
 	characterTurns, err := calculateTurns(monster.Hp, characterDmg)
-	result := DEFAULT()
+	result := defaultFightResult()
 	if err != nil {
 		return &result, err
 	}

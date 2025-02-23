@@ -16,7 +16,8 @@ type GatherActor struct {
 	GoalItem         *artifactsmmo.ItemSchema
 	GoalQuantity     int
 	characterService *characters.CharacterService
-	itemService      *items.ItemService
+	itemService      items.ItemAccessor
+	mapService       maps.MapAccessor
 	logger           *slog.Logger
 }
 
@@ -26,9 +27,10 @@ func NewGatherActor(
 	goalCode string,
 	goalQuantity int,
 	characterService *characters.CharacterService,
-	itemService *items.ItemService,
+	itemService items.ItemAccessor,
+	mapService maps.MapAccessor,
 	logger *slog.Logger,
-) (*GatherActor, error) {
+) (Actor, error) {
 	item, err := itemService.GetItem(goalCode)
 	if err != nil {
 		logger.Error("Could not retrieve item info", "error", err)
@@ -52,6 +54,7 @@ func NewGatherActor(
 		GoalQuantity:     goalQuantity,
 		characterService: characterService,
 		itemService:      itemService,
+		mapService:       mapService,
 		logger:           logger}, nil
 }
 
@@ -102,7 +105,7 @@ func (actor *GatherActor) Do(character *characters.CharacterWrapper) error {
 	}
 	actor.logger.Info("Found resource", "code", resource)
 
-	maps, err := maps.GetAllMaps(actor.logger, nil, &resource)
+	maps, err := actor.mapService.GetAllMaps(nil, &resource, nil, nil)
 	if err != nil {
 		actor.logger.Error("Could not retrieve all map tiles potentially relevant to gathering resources.", "error", err)
 		return err

@@ -10,46 +10,48 @@ import (
 )
 
 type MonsterAccessor interface {
-	GetAllMonsters(params *artifactsmmo.GetAllMonstersMonstersGetParams) (*[]artifactsmmo.MonsterSchema, error)
+	GetAllMonsters(
+		minLevel *int,
+		maxLevel *int,
+		drop *string,
+		page *int,
+		size *int,
+	) (*[]artifactsmmo.MonsterSchema, error)
 	GetMonster(code string) (*artifactsmmo.MonsterSchema, error)
 }
 
-type ClientMonsterAccessor struct {
+type clientMonsterAccessor struct {
 	client *artifactsmmo.ClientWithResponses
 	logger *slog.Logger
 }
 
-func NewClientMonsterAccessor(client *artifactsmmo.ClientWithResponses, logger *slog.Logger) *ClientMonsterAccessor {
-	return &ClientMonsterAccessor{client, logger}
+func NewClientMonsterAccessor(client *artifactsmmo.ClientWithResponses, logger *slog.Logger) MonsterAccessor {
+	return &clientMonsterAccessor{client, logger}
 }
 
-func (accessor *ClientMonsterAccessor) GetAllMonsters(
-	params *artifactsmmo.GetAllMonstersMonstersGetParams,
+func (accessor *clientMonsterAccessor) GetAllMonsters(
+	minLevel *int,
+	maxLevel *int,
+	drop *string,
+	page *int,
+	size *int,
 ) (*[]artifactsmmo.MonsterSchema, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	respChan := make(chan struct {
-		*artifactsmmo.GetAllMonstersMonstersGetResponse
-		error
-	})
-	go func(retVal chan struct {
-		*artifactsmmo.GetAllMonstersMonstersGetResponse
-		error
-	}) {
-		resp, err := accessor.client.GetAllMonstersMonstersGetWithResponse(ctx, params)
-		retVal <- struct {
-			*artifactsmmo.GetAllMonstersMonstersGetResponse
-			error
-		}{resp, err}
-	}(respChan)
+	accessor.logger.Info("Searching for monsters", "minLevel", *minLevel, "maxLevel", *maxLevel, "drop", *drop, "page", *page, "size", *size)
 
-	accessor.logger.Info("Searching for monsters", "params", *params)
-
-	resp := <-respChan
-
-	if resp.error != nil {
-		return nil, resp.error
+	resp, err := accessor.client.GetAllMonstersMonstersGetWithResponse(
+		ctx,
+		&artifactsmmo.GetAllMonstersMonstersGetParams{
+			MinLevel: minLevel,
+			MaxLevel: maxLevel,
+			Drop:     drop,
+			Page:     page,
+			Size:     size,
+		})
+	if err != nil {
+		return nil, err
 	}
 	if resp.StatusCode() != 200 {
 		accessor.logger.Error("Received non-200 status code", "code", resp.StatusCode(), "body", string(resp.Body))
@@ -61,31 +63,15 @@ func (accessor *ClientMonsterAccessor) GetAllMonsters(
 	return &resp.JSON200.Data, nil
 }
 
-func (accessor *ClientMonsterAccessor) GetMonster(code string) (*artifactsmmo.MonsterSchema, error) {
+func (accessor *clientMonsterAccessor) GetMonster(code string) (*artifactsmmo.MonsterSchema, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	respChan := make(chan struct {
-		*artifactsmmo.GetMonsterMonstersCodeGetResponse
-		error
-	})
-	go func(retVal chan struct {
-		*artifactsmmo.GetMonsterMonstersCodeGetResponse
-		error
-	}) {
-		resp, err := accessor.client.GetMonsterMonstersCodeGetWithResponse(ctx, code)
-		retVal <- struct {
-			*artifactsmmo.GetMonsterMonstersCodeGetResponse
-			error
-		}{resp, err}
-	}(respChan)
+  accessor.logger.Info("Searching for monster", "code", code)
 
-	accessor.logger.Info("Searching for monster", "code", code)
-
-	resp := <-respChan
-
-	if resp.error != nil {
-		return nil, resp.error
+	resp, err := accessor.client.GetMonsterMonstersCodeGetWithResponse(ctx, code)
+	if err != nil {
+		return nil, err
 	}
 	if resp.StatusCode() != 200 {
 		accessor.logger.Error("Received non-200 status code", "code", resp.StatusCode(), "body", string(resp.Body))

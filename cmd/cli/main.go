@@ -15,16 +15,18 @@ import (
 	"github.com/NChitty/archaeologist/pkg/fights"
 	"github.com/NChitty/archaeologist/pkg/items"
 	"github.com/NChitty/archaeologist/pkg/items/effects"
+	"github.com/NChitty/archaeologist/pkg/maps"
 	"github.com/NChitty/archaeologist/pkg/monsters"
 	"github.com/phsym/console-slog"
 	artifactsmmo "github.com/promiseofcake/artifactsmmo-go-client/client"
 )
 
 var characterService *characters.CharacterService
-var itemService *items.ItemService
+var itemService items.ItemAccessor
 var effectAccumulator *effects.EffectAccumulator
 var fightService *fights.FightService
-var monsterAccessor *monsters.ClientMonsterAccessor
+var mapAccessor maps.MapAccessor
+var monsterAccessor monsters.MonsterAccessor
 
 func main() {
 	logFile, err := os.Create(fmt.Sprintf("%s.log", time.Now().Format("2006-01-02_15-04")))
@@ -46,21 +48,12 @@ func main() {
 
 	token := token.GetToken(client)
 
-	client, err = artifactsmmo.NewClientWithResponses(
-		"https://api.artifactsmmo.com/",
-		artifactsmmo.WithRequestEditorFn(artifactsmmo.NewBearerAuthorizationRequestFunc(token)),
-	)
-	if err != nil {
-		logger.Error("Could not create new web client for artifacts mmo", "error", err)
-		os.Exit(1)
-	}
-
 	account, err := accounts.New(client)
 	if err != nil {
 		os.Exit(1)
 	}
 
-	accountCharacters, err := account.GetCharacters()
+	accountCharacters, err := account.GetCharacters(token)
 	if err != nil {
 		logger.Error("Could not retrieve characters for given account token", "error", err)
 		os.Exit(1)
@@ -84,10 +77,12 @@ func main() {
 	}
 
 	selectedCharacter := characters.FromSchema(accountCharacters[choice-1])
+  selectedCharacter.Token = token
 	characterService := characters.NewCharacterService(logger, client)
 	itemService = items.DefaultItemService()
 	effectAccumulator = effects.New(slog.Default())
 	fightService = fights.NewFightService(effectAccumulator, slog.Default(), itemService)
+  mapAccessor = maps.NewClientMapAccessor(client, slog.Default())
 	monsterAccessor = monsters.NewClientMonsterAccessor(client, slog.Default())
 
 	var actor actors.Actor
@@ -110,7 +105,7 @@ func main() {
 		switch choice {
 		case 1:
 			code, qty := ItemInput(logger, "gather", "gather")
-			actor, err = actors.NewGatherActor(code, qty, characterService, itemService, logger)
+			actor, err = actors.NewGatherActor(code, qty, characterService, itemService, mapAccessor, logger)
 			if err != nil {
 				fmt.Errorf("Error: %w", err)
 				continue
@@ -121,7 +116,7 @@ func main() {
 			}{actor, selectedCharacter}
 		case 2:
 			code, qty := ItemInput(logger, "craft", "craft")
-			actor, err = actors.NewCraftingActor(code, qty, characterService, itemService, logger)
+			actor, err = actors.NewCraftingActor(code, qty, characterService, itemService, mapAccessor, logger)
 			if err != nil {
 				fmt.Errorf("Error: %w", err)
 				continue
@@ -132,7 +127,7 @@ func main() {
 			}{actor, selectedCharacter}
 		case 3:
 			var input string
-      fmt.Printf("Would you like to quit fighting when you are out of healing items? (1/t/true): ")
+			fmt.Printf("Would you like to quit fighting when you are out of healing items? (1/t/true): ")
 			_, err := fmt.Scanf("%s\n", &input)
 			if err != nil {
 				logger.Error("Did not understand the input", "error", err)
@@ -143,7 +138,7 @@ func main() {
 				logger.Error("Did not understand the input", "error", err)
 				continue
 			}
-			actor, err := actors.NewTaskFightingActor(selectedCharacter, exitOnRest, characterService, fightService, itemService, monsterAccessor, logger)
+			actor, err := actors.NewTaskFightingActor(selectedCharacter, exitOnRest, characterService, fightService, itemService, mapAccessor, monsterAccessor, logger)
 			if err != nil {
 				fmt.Printf("An error occurred: %v\n", err)
 				continue
