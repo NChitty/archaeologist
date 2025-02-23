@@ -222,7 +222,7 @@ func (service *CharacterService) UpdateCharacter(character *CharacterWrapper) er
 		return errors.New("Could not retrieve character with name: " + character.Name)
 	}
 
-	character = FromSchema(characterResp.JSON200.Data)
+	*character = *FromSchema(characterResp.JSON200.Data)
 
 	return nil
 }

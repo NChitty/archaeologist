@@ -2,6 +2,7 @@ package characters
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	artifactsmmo "github.com/promiseofcake/artifactsmmo-go-client/client"
@@ -58,7 +59,20 @@ func (service *CharacterService) Move(character *CharacterWrapper, x int, y int)
 		return nil, &ActionError{*character.CooldownExpiration, string(moveResp.Body)}
 	}
 
-	character = FromSchema(moveResp.JSON200.Data.Character)
+	*character = *FromSchema(moveResp.JSON200.Data.Character)
+
+	service.logger.Info(
+		"Completed move",
+		"cooldownExpiration",
+		character.CooldownExpiration.Local(),
+		"cooldown",
+		time.Now().UTC().Sub(*character.CooldownExpiration),
+		"location",
+		struct {
+			X int
+			Y int
+		}{character.X, character.Y},
+	)
 
 	return &ActionResult{
 		CooldownRemaining: time.Duration(moveResp.JSON200.Data.Cooldown.RemainingSeconds) * time.Second,
@@ -83,7 +97,7 @@ func (service *CharacterService) Fight(character *CharacterWrapper) (*ActionResu
 		return nil, &ActionError{*character.CooldownExpiration, string(fightResp.Body)}
 	}
 
-	character= FromSchema(fightResp.JSON200.Data.Character)
+	*character = *FromSchema(fightResp.JSON200.Data.Character)
 
 	return &ActionResult{
 		CooldownRemaining: time.Duration(fightResp.JSON200.Data.Cooldown.RemainingSeconds) * time.Second,
@@ -116,7 +130,7 @@ func (service *CharacterService) Gather(character *CharacterWrapper) (*ActionRes
 		return nil, &ActionError{*character.CooldownExpiration, string(gatherResp.Body)}
 	}
 
-	character = FromSchema(gatherResp.JSON200.Data.Character)
+	*character = *FromSchema(gatherResp.JSON200.Data.Character)
 
 	return &ActionResult{
 		CooldownRemaining: time.Duration(gatherResp.JSON200.Data.Cooldown.RemainingSeconds) * time.Second,
@@ -151,11 +165,68 @@ func (service *CharacterService) Craft(character *CharacterWrapper, itemCode str
 
 	service.logger.Debug("Craft response", "status", craftResp.StatusCode(), "body", string(craftResp.Body))
 
-	service.logger.Debug("Updating character", "character", craftResp.JSON200.Data.Character)
-	character = FromSchema(craftResp.JSON200.Data.Character)
+	*character = *FromSchema(craftResp.JSON200.Data.Character)
 
 	return &ActionResult{
 		CooldownRemaining: time.Duration(craftResp.JSON200.Data.Cooldown.RemainingSeconds) * time.Second,
+		Success:           true,
+	}, nil
+}
+
+func (service *CharacterService) Rest(character *CharacterWrapper) (*ActionResult, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	restResp, err := service.client.ActionRestMyNameActionRestPostWithResponse(ctx, character.Name)
+	if err != nil {
+		return nil, err
+	}
+	if restResp.StatusCode() == 499 {
+		err = service.WaitCooldown(character)
+		if err != nil {
+			return nil, err
+		}
+		return service.Rest(character)
+	}
+
+	if restResp.StatusCode() != 200 {
+		service.logger.Error("Unexpected status code", "statusCode", restResp.StatusCode(), "body", string(restResp.Body))
+		return nil, errors.New(string(restResp.Body))
+	}
+
+	*character = *FromSchema(restResp.JSON200.Data.Character)
+
+	return &ActionResult{
+		CooldownRemaining: time.Duration(restResp.JSON200.Data.Cooldown.RemainingSeconds) * time.Second,
+		Success:           true,
+	}, nil
+}
+
+func (service *CharacterService) Use(character *CharacterWrapper, item *artifactsmmo.SimpleItemSchema) (*ActionResult, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	useResp, err := service.client.ActionUseItemMyNameActionUsePostWithResponse(ctx, character.Name, *item)
+	if err != nil {
+		return nil, err
+	}
+	if useResp.StatusCode() == 499 {
+		err = service.WaitCooldown(character)
+		if err != nil {
+			return nil, err
+		}
+		return service.Use(character, item)
+	}
+
+	if useResp.StatusCode() != 200 {
+		service.logger.Error("Unexpected status code", "statusCode", useResp.StatusCode(), "body", string(useResp.Body))
+		return nil, errors.New(string(useResp.Body))
+	}
+
+	*character = *FromSchema(useResp.JSON200.Data.Character)
+
+	return &ActionResult{
+		CooldownRemaining: time.Duration(useResp.JSON200.Data.Cooldown.RemainingSeconds) * time.Second,
 		Success:           true,
 	}, nil
 }

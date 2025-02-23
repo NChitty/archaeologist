@@ -12,6 +12,12 @@ import (
 	artifactsmmo "github.com/promiseofcake/artifactsmmo-go-client/client"
 )
 
+type ItemAccessor interface {
+	GetItem(name string) (*artifactsmmo.ItemSchema, error)
+	GetAllResources(skill *artifactsmmo.GatheringSkill, code *string) ([]artifactsmmo.ResourceSchema, error)
+	GetCharacterEquipment(character *characters.CharacterWrapper) *[]Equipment
+}
+
 type ItemService struct {
 	client *artifactsmmo.ClientWithResponses
 	logger *slog.Logger

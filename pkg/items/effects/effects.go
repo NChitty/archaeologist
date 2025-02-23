@@ -33,6 +33,8 @@ const (
 	BoostResWater
 
 	Restore
+
+	Heal
 )
 
 var effectName = map[ItemEffect]string{
@@ -66,6 +68,8 @@ var effectName = map[ItemEffect]string{
 	BoostResWater: "boost_res_water",
 
 	Restore: "restore",
+
+  Heal: "heal",
 }
 
 var effect = map[string]ItemEffect{
@@ -99,6 +103,8 @@ var effect = map[string]ItemEffect{
 	"boost_res_water": BoostResWater,
 
 	"restore": Restore,
+
+  "heal": Heal,
 }
 
 func (ie ItemEffect) GetEffectName() string {

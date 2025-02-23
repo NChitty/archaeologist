@@ -100,6 +100,7 @@ func (actor *GatherActor) Do(character *characters.CharacterWrapper) error {
 			lowestRate = v.Rate
 		}
 	}
+	actor.logger.Info("Found resource", "code", resource)
 
 	maps, err := maps.GetAllMaps(actor.logger, nil, &resource)
 	if err != nil {
@@ -111,25 +112,25 @@ func (actor *GatherActor) Do(character *characters.CharacterWrapper) error {
 		return errors.New("No maps with subtype needed to gather resource.")
 	}
 
-	var x, y *int
+	var x, y int
 	// todo another place for an optimizer
 	for _, cell := range maps {
-		x = &cell.X
-		y = &cell.Y
+		x = cell.X
+		y = cell.Y
 		break
 	}
 
-	if x == nil || y == nil {
+	if x == 0 && y == 0 {
 		actor.logger.Error(
-			"Could not try finding map cell for gathering",
+			"Could not find map cell for gathering",
 			"itemCode",
 			actor.GoalItem.Code,
 		)
 		return errors.New("Could not find a map cell for gathering resource")
 	}
 
-	if character.X != *x || character.Y != *y {
-		result, err := actor.characterService.Move(character, *x, *y)
+	if character.X != x || character.Y != y {
+		result, err := actor.characterService.Move(character, x, y)
 		if err != nil {
 			return err
 		}
@@ -142,8 +143,17 @@ func (actor *GatherActor) Do(character *characters.CharacterWrapper) error {
 			actor.logger.Error("Could not gather resource", "error", err)
 			return err
 		}
+		actor.logger.Info(
+			"Gathered resource",
+			"item",
+			actor.GoalItem.Code,
+			"goal",
+			actor.GoalQuantity,
+			"qty",
+			character.Inventory[actor.GoalItem.Code].Quantity,
+		)
 		if character.Inventory[actor.GoalItem.Code].Quantity == actor.GoalQuantity {
-			actor.logger.Info("Finished gathering", "item", actor.GoalItem, "qty", actor.GoalQuantity)
+			actor.logger.Info("Finished gathering", "item", actor.GoalItem.Code, "qty", actor.GoalQuantity)
 			break
 		}
 	}

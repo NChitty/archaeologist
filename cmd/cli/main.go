@@ -14,6 +14,7 @@ import (
 	"github.com/NChitty/archaeologist/pkg/fights"
 	"github.com/NChitty/archaeologist/pkg/items"
 	"github.com/NChitty/archaeologist/pkg/items/effects"
+	"github.com/NChitty/archaeologist/pkg/monsters"
 	"github.com/phsym/console-slog"
 	artifactsmmo "github.com/promiseofcake/artifactsmmo-go-client/client"
 )
@@ -22,6 +23,7 @@ var characterService *characters.CharacterService
 var itemService *items.ItemService
 var effectAccumulator *effects.EffectAccumulator
 var fightService *fights.FightService
+var monsterAccessor *monsters.ClientMonsterAccessor
 
 func main() {
 	logFile, err := os.Create(fmt.Sprintf("%s.log", time.Now().Format("2006-01-02_15-04")))
@@ -80,20 +82,25 @@ func main() {
 		os.Exit(1)
 	}
 
-  selectedCharacter := characters.FromSchema(accountCharacters[choice-1])
+	selectedCharacter := characters.FromSchema(accountCharacters[choice-1])
 	characterService := characters.NewCharacterService(logger, client)
 	itemService = items.DefaultItemService()
 	effectAccumulator = effects.New(slog.Default())
 	fightService = fights.NewFightService(effectAccumulator, slog.Default(), itemService)
+	monsterAccessor = monsters.NewClientMonsterAccessor(client, slog.Default())
 
 	var actor actors.Actor
-	actorQueue := make(chan struct{actors.Actor; *characters.CharacterWrapper}, 5)
+	actorQueue := make(chan struct {
+		actors.Actor
+		*characters.CharacterWrapper
+	}, 5)
 	defer close(actorQueue)
 	go actorsDo(logger, actorQueue)
 
 	for {
 		fmt.Println("[1] Gather")
 		fmt.Println("[2] Craft")
+		fmt.Println("[3] Task")
 		_, err = fmt.Scanf("%d\n", &choice)
 		if err != nil {
 			logger.Error("Did not understand the choice", "error", err)
@@ -104,16 +111,34 @@ func main() {
 			code, qty := ItemInput(logger)
 			actor, err = actors.NewGatherActor(code, qty, characterService, itemService, logger)
 			if err != nil {
+				fmt.Errorf("Error: %w", err)
 				continue
 			}
-			actorQueue <- struct{actors.Actor; *characters.CharacterWrapper}{actor, selectedCharacter}
+			actorQueue <- struct {
+				actors.Actor
+				*characters.CharacterWrapper
+			}{actor, selectedCharacter}
 		case 2:
 			code, qty := ItemInput(logger)
 			actor, err = actors.NewCraftingActor(code, qty, characterService, itemService, logger)
 			if err != nil {
+				fmt.Errorf("Error: %w", err)
 				continue
 			}
-			actorQueue <- struct{actors.Actor; *characters.CharacterWrapper}{actor, selectedCharacter}
+			actorQueue <- struct {
+				actors.Actor
+				*characters.CharacterWrapper
+			}{actor, selectedCharacter}
+		case 3:
+			actor, err := actors.NewTaskFightingActor(selectedCharacter, characterService, fightService, itemService, monsterAccessor, slog.Default())
+			if err != nil {
+				fmt.Errorf("Error: %w", err)
+				continue
+			}
+			actorQueue <- struct {
+				actors.Actor
+				*characters.CharacterWrapper
+			}{actor, selectedCharacter}
 		default:
 			break
 		}
@@ -137,7 +162,10 @@ func ItemInput(logger *slog.Logger) (string, int) {
 	return code, quantity
 }
 
-func actorsDo(logger *slog.Logger, actor chan struct{actors.Actor; *characters.CharacterWrapper}) {
+func actorsDo(logger *slog.Logger, actor chan struct {
+	actors.Actor
+	*characters.CharacterWrapper
+}) {
 	logger.Debug("Waiting for actor")
 	pop := <-actor
 	logger.Debug("Acquired actor", "actor", actor)
