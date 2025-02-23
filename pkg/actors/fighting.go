@@ -19,6 +19,7 @@ import (
 type TaskFightingActor struct {
 	monster          string
 	quantity         int
+	exitOnRest       bool
 	characterService *characters.CharacterService
 	fightService     *fights.FightService
 	itemAccessor     items.ItemAccessor
@@ -28,6 +29,7 @@ type TaskFightingActor struct {
 
 func NewTaskFightingActor(
 	character *characters.CharacterWrapper,
+	exitOnRest bool,
 	characterService *characters.CharacterService,
 	fightService *fights.FightService,
 	itemAccessor items.ItemAccessor,
@@ -41,6 +43,7 @@ func NewTaskFightingActor(
 	return &TaskFightingActor{
 		monster:          character.Task,
 		quantity:         character.TaskTotal,
+		exitOnRest:       exitOnRest,
 		characterService: characterService,
 		fightService:     fightService,
 		itemAccessor:     itemAccessor,
@@ -214,20 +217,31 @@ func (actor *TaskFightingActor) heal(character *characters.CharacterWrapper, fig
 			"hpLoss",
 			fightResult.CharacterHpLoss,
 		)
+
 		healingItems := getHealingItems(actor.itemAccessor, character, actor.logger)
+
+		if len(healingItems) == 0 && actor.exitOnRest {
+			return errors.New("Exit on rest")
+		}
+
 		if len(healingItems) == 0 {
 			actor.logger.Info("No healing items, resting...")
-			actor.characterService.Rest(character)
-		} else {
-			targetHealing := character.MaxHp - character.Hp
-			useSchema := buildUseSchema(character, healingItems, targetHealing)
-			healRes, err := actor.characterService.Use(character, useSchema)
+			healRes, err := actor.characterService.Rest(character)
 			if err != nil {
-				actor.logger.Error("Could not use item", "use", *useSchema, "error", err)
 				return err
 			}
 			time.Sleep(healRes.CooldownRemaining)
+			return nil
 		}
+
+		targetHealing := character.MaxHp - character.Hp
+		useSchema := buildUseSchema(character, healingItems, targetHealing)
+		healRes, err := actor.characterService.Use(character, useSchema)
+		if err != nil {
+			actor.logger.Error("Could not use item", "use", *useSchema, "error", err)
+			return err
+		}
+		time.Sleep(healRes.CooldownRemaining)
 	}
 	return nil
 }

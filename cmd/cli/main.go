@@ -5,6 +5,7 @@ import (
 	"log"
 	"log/slog"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/NChitty/archaeologist/cmd/cli/token"
@@ -108,7 +109,7 @@ func main() {
 		}
 		switch choice {
 		case 1:
-			code, qty := ItemInput(logger)
+			code, qty := ItemInput(logger, "gather", "gather")
 			actor, err = actors.NewGatherActor(code, qty, characterService, itemService, logger)
 			if err != nil {
 				fmt.Errorf("Error: %w", err)
@@ -119,7 +120,7 @@ func main() {
 				*characters.CharacterWrapper
 			}{actor, selectedCharacter}
 		case 2:
-			code, qty := ItemInput(logger)
+			code, qty := ItemInput(logger, "craft", "craft")
 			actor, err = actors.NewCraftingActor(code, qty, characterService, itemService, logger)
 			if err != nil {
 				fmt.Errorf("Error: %w", err)
@@ -130,12 +131,24 @@ func main() {
 				*characters.CharacterWrapper
 			}{actor, selectedCharacter}
 		case 3:
-			actor, err := actors.NewTaskFightingActor(selectedCharacter, characterService, fightService, itemService, monsterAccessor, logger)
+			var input string
+      fmt.Printf("Would you like to quit fighting when you are out of healing items? (1/t/true): ")
+			_, err := fmt.Scanf("%s\n", &input)
 			if err != nil {
-        fmt.Printf("An error occurred: %v\n", err)
+				logger.Error("Did not understand the input", "error", err)
 				continue
 			}
-      fmt.Println("Created fighting actor")
+			exitOnRest, err := strconv.ParseBool(input)
+			if err != nil {
+				logger.Error("Did not understand the input", "error", err)
+				continue
+			}
+			actor, err := actors.NewTaskFightingActor(selectedCharacter, exitOnRest, characterService, fightService, itemService, monsterAccessor, logger)
+			if err != nil {
+				fmt.Printf("An error occurred: %v\n", err)
+				continue
+			}
+			fmt.Println("Created fighting actor")
 			actorQueue <- struct {
 				actors.Actor
 				*characters.CharacterWrapper
@@ -146,16 +159,16 @@ func main() {
 	}
 }
 
-func ItemInput(logger *slog.Logger) (string, int) {
+func ItemInput(logger *slog.Logger, itemPrompt string, quantityPrompt string) (string, int) {
 	var code string
-	fmt.Print("Type code of item you would like to gather: ")
+	fmt.Printf("Type code of item you would like to %s: ", itemPrompt)
 	_, err := fmt.Scanf("%s\n", &code)
 	if err != nil {
 		logger.Error("Did not understand the input", "error", err)
 	}
 
 	var quantity int
-	fmt.Print("Type amount of the item you would like to gather: ")
+	fmt.Printf("Type code of item you would like to %s: ", quantityPrompt)
 	_, err = fmt.Scanf("%d\n", &quantity)
 	if err != nil {
 		logger.Error("Did not understand the input", "error", err)
