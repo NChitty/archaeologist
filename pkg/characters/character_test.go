@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/NChitty/archaeologist/pkg/characters"
+	"github.com/NChitty/archaeologist/pkg/models/character"
 	"github.com/promiseofcake/artifactsmmo-go-client/client"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -18,7 +19,7 @@ var desireauxCharacter client.CharacterSchema = client.CharacterSchema{
 
 func TestUpdateCharacter(t *testing.T) {
 	mockClient := new(mockClient)
-	character := &characters.CharacterWrapper{
+	character := &character.Character{
 		Name:  "Desireaux",
 		Token: "myToken",
 	}

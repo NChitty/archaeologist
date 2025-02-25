@@ -4,31 +4,33 @@ import (
 	"errors"
 	"log/slog"
 	"math"
-	"time"
 
-	"github.com/NChitty/archaeologist/pkg/characters"
-	"github.com/NChitty/archaeologist/pkg/items"
-	"github.com/NChitty/archaeologist/pkg/maps"
+	"github.com/NChitty/archaeologist/pkg/models/character"
 	artifactsmmo "github.com/promiseofcake/artifactsmmo-go-client/client"
 )
 
-type GatherActor struct {
+type GatheringCharacterAdapter interface {
+	CharacterAdapter
+	Gather(character *character.Character) (*ActionResult, error)
+}
+
+type GatherActor[T GatheringCharacterAdapter] struct {
 	GoalItem         *artifactsmmo.ItemSchema
 	GoalQuantity     int
-	characterService *characters.CharacterService
-	itemService      items.ItemAccessor
-	mapService       maps.MapAccessor
+	characterService T
+	itemService      ItemAdapter
+	mapService       MapAdapter
 	logger           *slog.Logger
 }
 
 var GatherSkills = [4]string{"mining", "woodcutting", "fishing", "alchemy"}
 
-func NewGatherActor(
+func NewGatherActor[T GatheringCharacterAdapter](
 	goalCode string,
 	goalQuantity int,
-	characterService *characters.CharacterService,
-	itemService items.ItemAccessor,
-	mapService maps.MapAccessor,
+	characterService T,
+	itemService ItemAdapter,
+	mapService MapAdapter,
 	logger *slog.Logger,
 ) (Actor, error) {
 	item, err := itemService.GetItem(goalCode)
@@ -42,14 +44,14 @@ func NewGatherActor(
 		return nil, errors.ErrUnsupported
 	}
 
-	if !IsGatherable(logger, item) {
+	if !itemService.IsGatherable(item) {
 		logger.Error("This item is not gatherable", "item", *item)
 		return nil, errors.ErrUnsupported
 	}
 
 	logger.Info("Created gathering actor", "item", *item, "qty", goalQuantity)
 
-	return &GatherActor{
+	return &GatherActor[GatheringCharacterAdapter]{
 		GoalItem:         item,
 		GoalQuantity:     goalQuantity,
 		characterService: characterService,
@@ -58,25 +60,8 @@ func NewGatherActor(
 		logger:           logger}, nil
 }
 
-func IsGatherable(logger *slog.Logger, item *artifactsmmo.ItemSchema) bool {
-	if item.Type != "resource" {
-		return false
-	}
-
-	resources, err := items.DefaultItemService().GetAllResources(nil, &item.Code)
-	if err != nil {
-		logger.Warn("Failed to retrieve resources", "code", item.Code, "error", err)
-		return false
-	}
-
-	if len(resources) == 0 {
-		return false
-	}
-
-	return true
-}
-
-func (actor *GatherActor) Do(character *characters.CharacterWrapper) error {
+func (actor *GatherActor[GatheringCharacterAdapter]) Do(character *character.Character) error {
+	actor.characterService.UpdateCharacter(character)
 	resources, err := actor.itemService.GetAllResources(
 		(*artifactsmmo.GatheringSkill)(&actor.GoalItem.Subtype),
 		&actor.GoalItem.Code,
@@ -105,39 +90,10 @@ func (actor *GatherActor) Do(character *characters.CharacterWrapper) error {
 	}
 	actor.logger.Info("Found resource", "code", resource)
 
-	maps, err := actor.mapService.GetAllMaps(nil, &resource, nil, nil)
+	err = move(actor.mapService, actor.characterService, character, nil, &resource)
 	if err != nil {
-		actor.logger.Error("Could not retrieve all map tiles potentially relevant to gathering resources.", "error", err)
+		actor.logger.Error("Could not move character", "error", err)
 		return err
-	}
-	if len(maps) == 0 {
-		actor.logger.Error("No maps with type needed to gather resource.", "type", actor.GoalItem.Type)
-		return errors.New("No maps with subtype needed to gather resource.")
-	}
-
-	var x, y int
-	// todo another place for an optimizer
-	for _, cell := range maps {
-		x = cell.X
-		y = cell.Y
-		break
-	}
-
-	if x == 0 && y == 0 {
-		actor.logger.Error(
-			"Could not find map cell for gathering",
-			"itemCode",
-			actor.GoalItem.Code,
-		)
-		return errors.New("Could not find a map cell for gathering resource")
-	}
-
-	if character.X != x || character.Y != y {
-		result, err := actor.characterService.Move(character, x, y)
-		if err != nil {
-			return err
-		}
-		time.Sleep(result.CooldownRemaining)
 	}
 
 	for {

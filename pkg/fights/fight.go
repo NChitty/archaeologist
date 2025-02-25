@@ -5,24 +5,19 @@ import (
 	"log/slog"
 	"math"
 
-	"github.com/NChitty/archaeologist/pkg/characters"
-	"github.com/NChitty/archaeologist/pkg/items"
+	"github.com/NChitty/archaeologist/pkg/actors"
 	"github.com/NChitty/archaeologist/pkg/items/effects"
+	"github.com/NChitty/archaeologist/pkg/models/item"
+	"github.com/NChitty/archaeologist/pkg/models/character"
 	artifactsmmo "github.com/promiseofcake/artifactsmmo-go-client/client"
 )
 
-type FightResult struct {
-	Win             bool
-	Turns           int
-	CharacterTurns  int
-	CharacterHpLoss int
-	RestoreTurns    int
-	CharacterDmg    int
-	MonsterDmg      int
+type ItemAccessor interface {
+	GetCharacterEquipment(character *character.Character) *[]character.Equipment
 }
 
-func defaultFightResult() FightResult {
-	return FightResult{
+func defaultFightResult() actors.FightResult {
+	return actors.FightResult{
 		Win:             false,
 		Turns:           100,
 		CharacterTurns:  100,
@@ -36,13 +31,13 @@ func defaultFightResult() FightResult {
 type FightService struct {
 	effectAccumulator *effects.EffectAccumulator
 	logger            *slog.Logger
-	itemService       items.ItemAccessor
+	itemService       ItemAccessor
 }
 
 func NewFightService(
 	effectAccumulator *effects.EffectAccumulator,
 	logger *slog.Logger,
-	itemService items.ItemAccessor,
+	itemService ItemAccessor,
 ) *FightService {
 	return &FightService{
 		effectAccumulator: effectAccumulator,
@@ -52,9 +47,9 @@ func NewFightService(
 }
 
 func (service *FightService) CalculateFightResult(
-	character *characters.CharacterWrapper,
+	character *character.Character,
 	monster *artifactsmmo.MonsterSchema,
-) (*FightResult, error) {
+) (*actors.FightResult, error) {
 	equipment := service.itemService.GetCharacterEquipment(character)
 	service.effectAccumulator.Reset()
 	service.effectAccumulator.Accumulate(equipment)
@@ -69,27 +64,27 @@ func (service *FightService) CalculateFightResult(
 	if monsterResult.monsterTurns < characterTurns {
 		numberTurns = monsterResult.monsterTurns * 2
 	}
-	return &FightResult{
-		monsterResult.monsterTurns >= characterTurns,
-		numberTurns,
-		characterTurns,
-		monsterResult.characterHpLoss,
-		monsterResult.restoreTurns,
-		characterDmg,
-		monsterResult.monsterDmg,
+	return &actors.FightResult{
+		Win:             monsterResult.monsterTurns >= characterTurns,
+		Turns:           numberTurns,
+		CharacterTurns:  characterTurns,
+		CharacterHpLoss: monsterResult.characterHpLoss,
+		RestoreTurns:    monsterResult.restoreTurns,
+		CharacterDmg:    characterDmg,
+		MonsterDmg:      monsterResult.monsterDmg,
 	}, nil
 }
 
 func (service *FightService) calculateCharacterDamage(monster *artifactsmmo.MonsterSchema) int {
-	attackAir := float64(service.effectAccumulator.GetEffect(effects.AttackAir))
-	attackFire := float64(service.effectAccumulator.GetEffect(effects.AttackFire))
-	attackEarth := float64(service.effectAccumulator.GetEffect(effects.AttackEarth))
-	attackWater := float64(service.effectAccumulator.GetEffect(effects.AttackWater))
-  dmg := float64(service.effectAccumulator.GetEffect(effects.Dmg))
-	dmgAir := float64(service.effectAccumulator.GetEffect(effects.DmgAir))
-	dmgFire := float64(service.effectAccumulator.GetEffect(effects.DmgFire))
-	dmgEarth := float64(service.effectAccumulator.GetEffect(effects.DmgEarth))
-	dmgWater := float64(service.effectAccumulator.GetEffect(effects.DmgWater))
+	attackAir := float64(service.effectAccumulator.GetEffect(item.AttackAirEffect))
+	attackFire := float64(service.effectAccumulator.GetEffect(item.AttackFireEffect))
+	attackEarth := float64(service.effectAccumulator.GetEffect(item.AttackEarthEffect))
+	attackWater := float64(service.effectAccumulator.GetEffect(item.AttackWaterEffect))
+	dmg := float64(service.effectAccumulator.GetEffect(item.DmgEffect))
+	dmgAir := float64(service.effectAccumulator.GetEffect(item.DmgAirEffect))
+	dmgFire := float64(service.effectAccumulator.GetEffect(item.DmgFireEffect))
+	dmgEarth := float64(service.effectAccumulator.GetEffect(item.DmgEarthEffect))
+	dmgWater := float64(service.effectAccumulator.GetEffect(item.DmgWaterEffect))
 	resAir := float64(monster.ResAir)
 	resFire := float64(monster.ResFire)
 	resEarth := float64(monster.ResEarth)
@@ -108,16 +103,16 @@ func (service *FightService) calculateCharacterDamage(monster *artifactsmmo.Mons
 func (service *FightService) calculateMonsterDamage(monster *artifactsmmo.MonsterSchema) int {
 	airDmg := int(math.Round(
 		float64(monster.AttackAir) *
-			(1 - float64(service.effectAccumulator.GetEffect(effects.ResAir)+service.effectAccumulator.GetEffect(effects.BoostResAir))/float64(100))))
+			(1 - float64(service.effectAccumulator.GetEffect(item.ResAirEffect)+service.effectAccumulator.GetEffect(item.BoostResAirEffect))/float64(100))))
 	fireDmg := int(math.Round(
 		float64(monster.AttackFire) *
-			(1 - float64(service.effectAccumulator.GetEffect(effects.ResFire)+service.effectAccumulator.GetEffect(effects.BoostResFire))/float64(100))))
+			(1 - float64(service.effectAccumulator.GetEffect(item.ResFireEffect)+service.effectAccumulator.GetEffect(item.BoostResFireEffect))/float64(100))))
 	earthDmg := int(math.Round(
 		float64(monster.AttackEarth) *
-			(1 - float64(service.effectAccumulator.GetEffect(effects.ResEarth)+service.effectAccumulator.GetEffect(effects.BoostResEarth))/float64(100))))
+			(1 - float64(service.effectAccumulator.GetEffect(item.ResEarthEffect)+service.effectAccumulator.GetEffect(item.BoostResEarthEffect))/float64(100))))
 	waterDmg := int(math.Round(
 		float64(monster.AttackWater) *
-			(1 - float64(service.effectAccumulator.GetEffect(effects.ResWater)+service.effectAccumulator.GetEffect(effects.BoostResWater))/float64(100))))
+			(1 - float64(service.effectAccumulator.GetEffect(item.ResWaterEffect)+service.effectAccumulator.GetEffect(item.BoostResWaterEffect))/float64(100))))
 	return airDmg + fireDmg + earthDmg + waterDmg
 }
 
@@ -139,13 +134,13 @@ type monsterResult struct {
 }
 
 func (service *FightService) calculateMonsterResult(
-  monster *artifactsmmo.MonsterSchema,
+	monster *artifactsmmo.MonsterSchema,
 	maxCharacterHp int,
 	maxCharacterTurn int,
 	characterDmg int,
 ) monsterResult {
 	monsterDmg := service.calculateMonsterDamage(monster)
-	characterMaxHpWithBoost := maxCharacterHp + service.effectAccumulator.GetEffect(effects.BoostHp)
+	characterMaxHpWithBoost := maxCharacterHp + service.effectAccumulator.GetEffect(item.BoostHpEffect)
 	halfCharacterMaxHpWithBoost := characterMaxHpWithBoost / 2
 	if !service.effectAccumulator.CanRestore() {
 		monsterTurn, err := calculateTurns(characterMaxHpWithBoost, service.calculateMonsterDamage(monster))

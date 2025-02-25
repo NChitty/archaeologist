@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var mockItemService *itemService
+var mockItemService *ItemService
 
 //go:embed get_item_dne.json
 var dne string

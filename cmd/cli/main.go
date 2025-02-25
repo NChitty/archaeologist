@@ -16,17 +16,18 @@ import (
 	"github.com/NChitty/archaeologist/pkg/items"
 	"github.com/NChitty/archaeologist/pkg/items/effects"
 	"github.com/NChitty/archaeologist/pkg/maps"
+	"github.com/NChitty/archaeologist/pkg/models/character"
 	"github.com/NChitty/archaeologist/pkg/monsters"
 	"github.com/phsym/console-slog"
 	artifactsmmo "github.com/promiseofcake/artifactsmmo-go-client/client"
 )
 
 var characterService *characters.CharacterService
-var itemService items.ItemAccessor
+var itemService *items.ItemService
 var effectAccumulator *effects.EffectAccumulator
 var fightService *fights.FightService
-var mapAccessor maps.MapAccessor
-var monsterAccessor monsters.MonsterAccessor
+var mapAccessor *maps.ClientMapAccessor
+var monsterAccessor *monsters.ClientMonsterAccessor
 
 func main() {
 	logFile, err := os.Create(fmt.Sprintf("%s.log", time.Now().Format("2006-01-02_15-04")))
@@ -76,7 +77,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	selectedCharacter := characters.FromSchema(accountCharacters[choice-1])
+	selectedCharacter := character.FromSchema(accountCharacters[choice-1])
 	selectedCharacter.Token = token
 	characterService := characters.NewCharacterService(logger, client)
 	itemService = items.DefaultItemService()
@@ -88,7 +89,7 @@ func main() {
 	var actor actors.Actor
 	actorQueue := make(chan struct {
 		actors.Actor
-		*characters.CharacterWrapper
+		*character.Character
 	}, 5)
 	defer close(actorQueue)
 	go actorsDo(logger, actorQueue)
@@ -112,7 +113,7 @@ func main() {
 			}
 			actorQueue <- struct {
 				actors.Actor
-				*characters.CharacterWrapper
+				*character.Character
 			}{actor, selectedCharacter}
 		case 2:
 			code, qty := ItemInput(logger, "craft", "craft")
@@ -123,7 +124,7 @@ func main() {
 			}
 			actorQueue <- struct {
 				actors.Actor
-				*characters.CharacterWrapper
+				*character.Character
 			}{actor, selectedCharacter}
 		case 3:
 			var input string
@@ -146,7 +147,7 @@ func main() {
 			fmt.Println("Created fighting actor")
 			actorQueue <- struct {
 				actors.Actor
-				*characters.CharacterWrapper
+				*character.Character
 			}{actor, selectedCharacter}
 		default:
 			break
@@ -173,13 +174,13 @@ func ItemInput(logger *slog.Logger, itemPrompt string, quantityPrompt string) (s
 
 func actorsDo(logger *slog.Logger, actor chan struct {
 	actors.Actor
-	*characters.CharacterWrapper
+	*character.Character
 }) {
 	logger.Debug("Waiting for actor")
 	pop := <-actor
 	logger.Debug("Acquired actor", "actor", actor)
 	for {
-		err := pop.Do(pop.CharacterWrapper)
+		err := pop.Do(pop.Character)
 		if err != nil {
 			logger.Error("Failed to perform action", "error", err)
 		}

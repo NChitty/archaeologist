@@ -7,35 +7,54 @@ import (
 	"sync"
 	"time"
 
-	"github.com/NChitty/archaeologist/pkg/characters"
-	"github.com/NChitty/archaeologist/pkg/fights"
-	"github.com/NChitty/archaeologist/pkg/items"
-	"github.com/NChitty/archaeologist/pkg/items/effects"
-	"github.com/NChitty/archaeologist/pkg/maps"
-	"github.com/NChitty/archaeologist/pkg/monsters"
+	"github.com/NChitty/archaeologist/pkg/models/character"
+	"github.com/NChitty/archaeologist/pkg/models/item"
 	artifactsmmo "github.com/promiseofcake/artifactsmmo-go-client/client"
 )
+
+type FightingCharacterAdapter interface {
+	CharacterAdapter
+	Fight(character *character.Character) (*ActionResult, error)
+	Rest(character *character.Character) (*ActionResult, error)
+	Use(character *character.Character, item *artifactsmmo.SimpleItemSchema) (*ActionResult, error)
+}
+
+type FightResult struct {
+	Win             bool
+	Turns           int
+	CharacterTurns  int
+	CharacterHpLoss int
+	RestoreTurns    int
+	CharacterDmg    int
+	MonsterDmg      int
+}
+
+type FightSimulator interface {
+	CalculateFightResult(character *character.Character, monster *artifactsmmo.MonsterSchema) (*FightResult, error)
+}
 
 type TaskFightingActor struct {
 	monster          string
 	quantity         int
 	exitOnRest       bool
-	characterService *characters.CharacterService
-	fightService     *fights.FightService
-	itemAccessor     items.ItemAccessor
-	mapAccessor      maps.MapAccessor
-	monsterAccessor  monsters.MonsterAccessor
+	characterService FightingCharacterAdapter
+	fightService     FightSimulator
+	itemAccessor     ItemAdapter
+	mapAccessor      MapAdapter
+	monsterAccessor  MonsterAdapter
 	logger           *slog.Logger
 }
 
+var ExitOnRest error = errors.New("Exit on rest")
+
 func NewTaskFightingActor(
-	character *characters.CharacterWrapper,
+	character *character.Character,
 	exitOnRest bool,
-	characterService *characters.CharacterService,
-	fightService *fights.FightService,
-	itemAccessor items.ItemAccessor,
-	mapAccessor maps.MapAccessor,
-	monsterAccessor monsters.MonsterAccessor,
+	characterService FightingCharacterAdapter,
+	fightService FightSimulator,
+	itemAccessor ItemAdapter,
+	mapAccessor MapAdapter,
+	monsterAccessor MonsterAdapter,
 	logger *slog.Logger,
 ) (Actor, error) {
 	if character.TaskType != "monsters" {
@@ -55,7 +74,8 @@ func NewTaskFightingActor(
 	}, nil
 }
 
-func (actor *TaskFightingActor) Do(character *characters.CharacterWrapper) error {
+func (actor *TaskFightingActor) Do(character *character.Character) error {
+	actor.characterService.UpdateCharacter(character)
 	monster, err := actor.monsterAccessor.GetMonster(actor.monster)
 	if err != nil {
 		actor.logger.Error("Could not find monster with code", "error", err)
@@ -77,35 +97,10 @@ func (actor *TaskFightingActor) Do(character *characters.CharacterWrapper) error
 		return err
 	}
 
-	maps, err := actor.mapAccessor.GetAllMaps(nil, &actor.monster, nil, nil)
+	err = move(actor.mapAccessor, actor.characterService, character, nil, &actor.monster)
 	if err != nil {
-		actor.logger.Error("Could not retrieve all map tiles potentially relevant to monster.", "monster", actor.monster, "error", err)
+		actor.logger.Error("Could not move character", "error", err)
 		return err
-	}
-	if len(maps) == 0 {
-		actor.logger.Error("No maps with monster.", "monster", actor.monster)
-		return errors.New("No maps with monster.")
-	}
-
-	var x, y int
-	// todo another place for an optimizer
-	for _, cell := range maps {
-		x = cell.X
-		y = cell.Y
-		break
-	}
-
-	if x == 0 && y == 0 {
-		actor.logger.Error("Could not find map cell to go to")
-		return errors.New("Could not find map cell")
-	}
-
-	if character.X != x || character.Y != y {
-		result, err := actor.characterService.Move(character, x, y)
-		if err != nil {
-			return err
-		}
-		time.Sleep(result.CooldownRemaining)
 	}
 
 	for character.TaskProgress < character.TaskTotal {
@@ -127,6 +122,9 @@ func (actor *TaskFightingActor) Do(character *characters.CharacterWrapper) error
 		}
 		err = actor.heal(character, fightResult)
 		if err != nil {
+			if errors.Is(err, ExitOnRest) {
+				return nil
+			}
 			return err
 		}
 	}
@@ -134,7 +132,7 @@ func (actor *TaskFightingActor) Do(character *characters.CharacterWrapper) error
 	return nil
 }
 
-func buildUseSchema(character *characters.CharacterWrapper, healingItems map[string]*artifactsmmo.ItemSchema, targetHealing int) *artifactsmmo.SimpleItemSchema {
+func buildUseSchema(character *character.Character, healingItems map[string]*artifactsmmo.ItemSchema, targetHealing int) *artifactsmmo.SimpleItemSchema {
 	type optimizer struct {
 		delta int
 		code  string
@@ -145,11 +143,11 @@ func buildUseSchema(character *characters.CharacterWrapper, healingItems map[str
 		code:  "",
 		qty:   0,
 	}
-	for code, item := range healingItems {
-		effectMap := mapEffects(item.Effects)
-		healing, present := effectMap[effects.Heal]
+	for code, healItem := range healingItems {
+		effectMap := mapEffects(healItem.Effects)
+		healing, present := effectMap[item.HealEffect]
 		if present && float64(targetHealing)/float64(healing) > 1 {
-			hasQty := character.Inventory[item.Code].Quantity
+			hasQty := character.Inventory[healItem.Code].Quantity
 			neededQty := targetHealing / healing
 			qty := neededQty
 			delta := (targetHealing % healing) * -1
@@ -170,15 +168,15 @@ func buildUseSchema(character *characters.CharacterWrapper, healingItems map[str
 	}
 }
 
-func mapEffects(effectsSchema *[]artifactsmmo.SimpleEffectSchema) map[effects.ItemEffect]int {
-	values := map[effects.ItemEffect]int{}
+func mapEffects(effectsSchema *[]artifactsmmo.SimpleEffectSchema) map[item.Effect]int {
+	values := map[item.Effect]int{}
 	for _, effect := range *effectsSchema {
-		values[effects.GetEffect(effect.Code)] = effect.Value
+		values[item.GetEffect(effect.Code)] = effect.Value
 	}
 	return values
 }
 
-func getHealingItems(itemAccessor items.ItemAccessor, character *characters.CharacterWrapper, logger *slog.Logger) map[string]*artifactsmmo.ItemSchema {
+func getHealingItems(itemAccessor ItemAdapter, character *character.Character, logger *slog.Logger) map[string]*artifactsmmo.ItemSchema {
 	var wg sync.WaitGroup
 	var lock sync.Mutex
 	consumables := make(map[string]*artifactsmmo.ItemSchema)
@@ -189,20 +187,20 @@ func getHealingItems(itemAccessor items.ItemAccessor, character *characters.Char
 			if len(slot.Code) == 0 {
 				return
 			}
-			item, err := itemAccessor.GetItem(slot.Code)
+			slotItem, err := itemAccessor.GetItem(slot.Code)
 			if err != nil {
 				logger.Warn("Could not get item", "code", slot.Code, "error", err)
 			}
 			canHeal := false
-			for _, effect := range *item.Effects {
-				if effect.Code == effects.Heal.GetEffectName() {
+			for _, effect := range *slotItem.Effects {
+				if effect.Code == item.HealEffect.GetEffectName() {
 					canHeal = true
 					break
 				}
 			}
 			if canHeal {
 				lock.Lock()
-				consumables[item.Code] = item
+				consumables[slotItem.Code] = slotItem
 				lock.Unlock()
 			}
 		}()
@@ -211,7 +209,7 @@ func getHealingItems(itemAccessor items.ItemAccessor, character *characters.Char
 	return consumables
 }
 
-func (actor *TaskFightingActor) heal(character *characters.CharacterWrapper, fightResult *fights.FightResult) error {
+func (actor *TaskFightingActor) heal(character *character.Character, fightResult *FightResult) error {
 	if fightResult.CharacterHpLoss >= character.Hp {
 		actor.logger.Warn(
 			"Expected HP loss of fight is greater than current HP - healing...",
@@ -224,7 +222,7 @@ func (actor *TaskFightingActor) heal(character *characters.CharacterWrapper, fig
 		healingItems := getHealingItems(actor.itemAccessor, character, actor.logger)
 
 		if len(healingItems) == 0 && actor.exitOnRest {
-			return errors.New("Exit on rest")
+			return ExitOnRest
 		}
 
 		if len(healingItems) == 0 {

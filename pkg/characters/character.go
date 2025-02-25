@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/NChitty/archaeologist/pkg/models/character"
 	artifactsmmo "github.com/promiseofcake/artifactsmmo-go-client/client"
 )
 
@@ -25,7 +26,7 @@ func NewCharacterService(
 	return character
 }
 
-func (service *CharacterService) UpdateCharacter(character *CharacterWrapper) error {
+func (service *CharacterService) UpdateCharacter(character *character.Character) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -38,8 +39,8 @@ func (service *CharacterService) UpdateCharacter(character *CharacterWrapper) er
 		service.logger.Error("Could not retrieve character", "error", err)
 		return err
 	}
-	if characterResp.StatusCode() == 404 {
-		service.logger.Error("Could not retrieve character", "name", character.Name)
+	if characterResp.StatusCode() != 200 {
+		service.logger.Error("Could not retrieve character", "name", character.Name, "body", string(characterResp.Body))
 		return errors.New("Could not retrieve character with name: " + character.Name)
 	}
 
@@ -48,7 +49,7 @@ func (service *CharacterService) UpdateCharacter(character *CharacterWrapper) er
 	return nil
 }
 
-func (service *CharacterService) GetInventory(character *CharacterWrapper) (map[string]artifactsmmo.InventorySlot, error) {
+func (service *CharacterService) GetInventory(character *character.Character) (map[string]artifactsmmo.InventorySlot, error) {
 	err := service.UpdateCharacter(character)
 	if err != nil {
 		return nil, err
@@ -56,7 +57,7 @@ func (service *CharacterService) GetInventory(character *CharacterWrapper) (map[
 	return character.Inventory, nil
 }
 
-func (service *CharacterService) WaitCooldown(character *CharacterWrapper) error {
+func (service *CharacterService) WaitCooldown(character *character.Character) error {
 	err := service.UpdateCharacter(character)
 	if err != nil {
 		return err

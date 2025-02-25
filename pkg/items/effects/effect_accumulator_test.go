@@ -4,37 +4,38 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/NChitty/archaeologist/pkg/items"
 	"github.com/NChitty/archaeologist/pkg/items/effects"
+	"github.com/NChitty/archaeologist/pkg/models/character"
+	"github.com/NChitty/archaeologist/pkg/models/item"
 	artifactsmmo "github.com/promiseofcake/artifactsmmo-go-client/client"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestEffectAccumulator(t *testing.T) {
 	type testCase struct {
-		items                 *[]items.Equipment
-		expectedResult        map[effects.ItemEffect]int
+		items                 *[]character.Equipment
+		expectedResult        map[item.Effect]int
 		expectedRestoreResult []effects.RestoreEffect
 	}
 	testCases := []testCase{
 		testCase{
-			items: &[]items.Equipment{
-				items.Equipment{
+			items: &[]character.Equipment{
+				character.Equipment{
 					Item: artifactsmmo.ItemSchema{
 						Effects: &[]artifactsmmo.SimpleEffectSchema{
 							artifactsmmo.SimpleEffectSchema{
-								Code:  effects.Hp.GetEffectName(),
+								Code:  item.HpEffect.GetEffectName(),
 								Value: 25,
 							},
 						},
 					},
 					Quantity: 1,
 				},
-				items.Equipment{
+				character.Equipment{
 					Item: artifactsmmo.ItemSchema{
 						Effects: &[]artifactsmmo.SimpleEffectSchema{
 							artifactsmmo.SimpleEffectSchema{
-								Code:  effects.Hp.GetEffectName(),
+								Code:  item.HpEffect.GetEffectName(),
 								Value: 25,
 							},
 						},
@@ -42,16 +43,16 @@ func TestEffectAccumulator(t *testing.T) {
 					Quantity: 1,
 				},
 			},
-			expectedResult:        map[effects.ItemEffect]int{effects.Hp: 50},
+			expectedResult:        map[item.Effect]int{item.HpEffect: 50},
 			expectedRestoreResult: []effects.RestoreEffect{},
 		},
 		testCase{
-			items: &[]items.Equipment{
-				items.Equipment{
+			items: &[]character.Equipment{
+				character.Equipment{
 					Item: artifactsmmo.ItemSchema{
 						Effects: &[]artifactsmmo.SimpleEffectSchema{
 							artifactsmmo.SimpleEffectSchema{
-								Code:  effects.Restore.GetEffectName(),
+								Code:  item.RestoreEffect.GetEffectName(),
 								Value: 20,
 							},
 						},
@@ -59,7 +60,7 @@ func TestEffectAccumulator(t *testing.T) {
 					Quantity: 5,
 				},
 			},
-			expectedResult: map[effects.ItemEffect]int{},
+			expectedResult: map[item.Effect]int{},
 			expectedRestoreResult: []effects.RestoreEffect{
 				effects.RestoreEffect{
 					Quantity: 5,

@@ -7,38 +7,32 @@ import (
 	"sync"
 	"time"
 
-	"github.com/NChitty/archaeologist/pkg/characters"
 	artifactsErrors "github.com/NChitty/archaeologist/pkg/errors"
+	"github.com/NChitty/archaeologist/pkg/models/character"
 	artifactsmmo "github.com/promiseofcake/artifactsmmo-go-client/client"
 )
 
-type ItemAccessor interface {
-	GetItem(name string) (*artifactsmmo.ItemSchema, error)
-	GetAllResources(skill *artifactsmmo.GatheringSkill, code *string) ([]artifactsmmo.ResourceSchema, error)
-	GetCharacterEquipment(character *characters.CharacterWrapper) *[]Equipment
-}
-
-type itemService struct {
+type ItemService struct {
 	client *artifactsmmo.ClientWithResponses
 	logger *slog.Logger
 }
 
-func NewItemService(logger *slog.Logger, server string, opts ...artifactsmmo.ClientOption) (*itemService, error) {
+func NewItemService(logger *slog.Logger, server string, opts ...artifactsmmo.ClientOption) (*ItemService, error) {
 	client, err := artifactsmmo.NewClientWithResponses("https://api.artifactsmmo.com/", opts...)
 	if err != nil {
 		logger.Error("Could not create authentication-less client", "error", err)
 		return nil, err
 	}
 
-	return &itemService{
+	return &ItemService{
 		client: client,
 		logger: logger,
 	}, nil
 }
 
-var defaultItemService *itemService
+var defaultItemService *ItemService
 
-func DefaultItemService() *itemService {
+func DefaultItemService() *ItemService {
 	if defaultItemService == nil {
 		service, err := NewItemService(slog.Default(), "https://api.artifactsmmo.com/")
 		for err != nil {
@@ -49,11 +43,11 @@ func DefaultItemService() *itemService {
 	return defaultItemService
 }
 
-func (service *itemService) GetItem(name string) (*artifactsmmo.ItemSchema, error) {
+func (service *ItemService) GetItem(name string) (*artifactsmmo.ItemSchema, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-  service.logger.Info("Looking up item", "code", name)
+	service.logger.Info("Looking up item", "code", name)
 	itemResp, err := service.client.GetItemItemsCodeGetWithResponse(ctx, name)
 	if err != nil {
 		service.logger.Error("Could not retrieve item", "body", string(itemResp.Body), "error", err)
@@ -66,7 +60,7 @@ func (service *itemService) GetItem(name string) (*artifactsmmo.ItemSchema, erro
 	return &itemResp.JSON200.Data, nil
 }
 
-func (service *itemService) GetAllResources(skill *artifactsmmo.GatheringSkill, code *string) ([]artifactsmmo.ResourceSchema, error) {
+func (service *ItemService) GetAllResources(skill *artifactsmmo.GatheringSkill, code *string) ([]artifactsmmo.ResourceSchema, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -99,30 +93,30 @@ type equipment struct {
 	quantity int
 }
 
-func (service *itemService) GetCharacterEquipment(character *characters.CharacterWrapper) *[]Equipment {
+func (service *ItemService) GetCharacterEquipment(player *character.Character) *[]character.Equipment {
 	equipmentCodes := []equipment{}
-	equipmentCodes = append(equipmentCodes, equipment{character.WeaponSlot, 1})
-	equipmentCodes = append(equipmentCodes, equipment{character.ShieldSlot, 1})
-	equipmentCodes = append(equipmentCodes, equipment{character.HelmetSlot, 1})
-	equipmentCodes = append(equipmentCodes, equipment{character.BodyArmorSlot, 1})
-	equipmentCodes = append(equipmentCodes, equipment{character.LegArmorSlot, 1})
-	equipmentCodes = append(equipmentCodes, equipment{character.BootsSlot, 1})
-	equipmentCodes = append(equipmentCodes, equipment{character.Ring1Slot, 1})
-	equipmentCodes = append(equipmentCodes, equipment{character.Ring2Slot, 1})
-	equipmentCodes = append(equipmentCodes, equipment{character.AmuletSlot, 1})
-	equipmentCodes = append(equipmentCodes, equipment{character.Artifact1Slot, 1})
-	equipmentCodes = append(equipmentCodes, equipment{character.Artifact2Slot, 1})
-	equipmentCodes = append(equipmentCodes, equipment{character.Artifact3Slot, 1})
+	equipmentCodes = append(equipmentCodes, equipment{player.WeaponSlot, 1})
+	equipmentCodes = append(equipmentCodes, equipment{player.ShieldSlot, 1})
+	equipmentCodes = append(equipmentCodes, equipment{player.HelmetSlot, 1})
+	equipmentCodes = append(equipmentCodes, equipment{player.BodyArmorSlot, 1})
+	equipmentCodes = append(equipmentCodes, equipment{player.LegArmorSlot, 1})
+	equipmentCodes = append(equipmentCodes, equipment{player.BootsSlot, 1})
+	equipmentCodes = append(equipmentCodes, equipment{player.Ring1Slot, 1})
+	equipmentCodes = append(equipmentCodes, equipment{player.Ring2Slot, 1})
+	equipmentCodes = append(equipmentCodes, equipment{player.AmuletSlot, 1})
+	equipmentCodes = append(equipmentCodes, equipment{player.Artifact1Slot, 1})
+	equipmentCodes = append(equipmentCodes, equipment{player.Artifact2Slot, 1})
+	equipmentCodes = append(equipmentCodes, equipment{player.Artifact3Slot, 1})
 	equipmentCodes = append(equipmentCodes, equipment{
-		character.Utility1Slot,
-		character.Utility1SlotQuantity,
+		player.Utility1Slot,
+		player.Utility1SlotQuantity,
 	})
 	equipmentCodes = append(equipmentCodes, equipment{
-		character.Utility2Slot,
-		character.Utility2SlotQuantity,
+		player.Utility2Slot,
+		player.Utility2SlotQuantity,
 	})
 
-	equipmentSlots := []Equipment{}
+	equipmentSlots := []character.Equipment{}
 
 	var wg sync.WaitGroup
 	var lock sync.Mutex
@@ -139,7 +133,7 @@ func (service *itemService) GetCharacterEquipment(character *characters.Characte
 				return
 			}
 			lock.Lock()
-			equipmentSlots = append(equipmentSlots, Equipment{
+			equipmentSlots = append(equipmentSlots, character.Equipment{
 				Item:     *item,
 				Quantity: equipment.quantity,
 			})
@@ -150,7 +144,27 @@ func (service *itemService) GetCharacterEquipment(character *characters.Characte
 	return &equipmentSlots
 }
 
-type Equipment struct {
-	Item     artifactsmmo.ItemSchema
-	Quantity int
+func (service *ItemService) IsGatherable(item *artifactsmmo.ItemSchema) bool {
+	if item.Type != "resource" {
+		return false
+	}
+
+	resources, err := service.GetAllResources(nil, &item.Code)
+	if err != nil {
+		service.logger.Warn("Failed to retrieve resources", "code", item.Code, "error", err)
+		return false
+	}
+
+	if len(resources) == 0 {
+		return false
+	}
+
+	return true
+}
+
+func (service *ItemService) IsCraftable(item *artifactsmmo.ItemSchema) bool {
+	if item.Craft == nil {
+		return false
+	}
+	return true
 }

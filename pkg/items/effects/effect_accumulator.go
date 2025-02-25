@@ -3,7 +3,8 @@ package effects
 import (
 	"log/slog"
 
-	"github.com/NChitty/archaeologist/pkg/items"
+	"github.com/NChitty/archaeologist/pkg/models/character"
+	"github.com/NChitty/archaeologist/pkg/models/item"
 )
 
 type RestoreEffect struct {
@@ -12,43 +13,43 @@ type RestoreEffect struct {
 }
 
 type EffectAccumulator struct {
-	effects map[ItemEffect]int
+	effects map[item.Effect]int
 	restore []RestoreEffect
 	logger  *slog.Logger
 }
 
 func New(logger *slog.Logger) *EffectAccumulator {
 	effectAccumulator := EffectAccumulator{
-		effects: map[ItemEffect]int{},
+		effects: map[item.Effect]int{},
 		restore: []RestoreEffect{},
 		logger:  logger,
 	}
 	return &effectAccumulator
 }
 
-func (accumulator *EffectAccumulator) Accumulate(equipment *[]items.Equipment) {
+func (accumulator *EffectAccumulator) Accumulate(equipment *[]character.Equipment) {
 	for _, equipmentItem := range *equipment {
 		for _, effectSchema := range *equipmentItem.Item.Effects {
-			effect := GetEffect(effectSchema.Code)
-			if effect == Restore {
+			itemEffect := item.GetEffect(effectSchema.Code)
+			if itemEffect == item.RestoreEffect {
 				accumulator.restore = append(accumulator.restore, RestoreEffect{equipmentItem.Quantity, effectSchema.Value})
 				continue
 			}
-			accumulator.effects[effect] += effectSchema.Value
+			accumulator.effects[itemEffect] += effectSchema.Value
 		}
 	}
 }
 
 func (accumulator *EffectAccumulator) Reset() {
-  accumulator.effects = map[ItemEffect]int{}
+  accumulator.effects = map[item.Effect]int{}
   accumulator.restore = []RestoreEffect{}
 }
 
-func (accumulator *EffectAccumulator) GetEffects() map[ItemEffect]int {
+func (accumulator *EffectAccumulator) GetEffects() map[item.Effect]int {
 	return accumulator.effects
 }
 
-func (accumulator *EffectAccumulator) GetEffect(effect ItemEffect) int {
+func (accumulator *EffectAccumulator) GetEffect(effect item.Effect) int {
 	return accumulator.effects[effect]
 }
 

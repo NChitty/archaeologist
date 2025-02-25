@@ -1,4 +1,4 @@
-package characters
+package character
 
 import (
 	"time"
@@ -6,7 +6,7 @@ import (
 	artifactsmmo "github.com/promiseofcake/artifactsmmo-go-client/client"
 )
 
-type CharacterWrapper struct {
+type Character struct {
 	Account              string
 	AlchemyLevel         int
 	AlchemyMaxXp         int
@@ -91,9 +91,9 @@ type CharacterWrapper struct {
   Token string
 }
 
-func FromSchema(schema artifactsmmo.CharacterSchema) *CharacterWrapper {
+func FromSchema(schema artifactsmmo.CharacterSchema) *Character {
 
-	return &CharacterWrapper{
+	return &Character{
 		Account:              schema.Account,
 		AlchemyLevel:         schema.AlchemyLevel,
 		AlchemyMaxXp:         schema.AlchemyMaxXp,
@@ -177,7 +177,7 @@ func FromSchema(schema artifactsmmo.CharacterSchema) *CharacterWrapper {
 	}
 }
 
-func (character *CharacterWrapper) FromSchema(schema artifactsmmo.CharacterSchema) {
+func (character *Character) FromSchema(schema artifactsmmo.CharacterSchema) {
 	character.Account = schema.Account
 	character.AlchemyLevel = schema.AlchemyLevel
 	character.AlchemyMaxXp = schema.AlchemyMaxXp
@@ -271,3 +271,7 @@ func mapInventory(inventory *[]artifactsmmo.InventorySlot) map[string]artifactsm
 	return inventoryMap
 }
 
+type Equipment struct {
+	Item     artifactsmmo.ItemSchema
+	Quantity int
+}

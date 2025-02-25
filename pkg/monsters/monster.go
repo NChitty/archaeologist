@@ -9,24 +9,13 @@ import (
 	artifactsmmo "github.com/promiseofcake/artifactsmmo-go-client/client"
 )
 
-type MonsterAccessor interface {
-	GetAllMonsters(
-		minLevel *int,
-		maxLevel *int,
-		drop *string,
-		page *int,
-		size *int,
-	) (*[]artifactsmmo.MonsterSchema, error)
-	GetMonster(code string) (*artifactsmmo.MonsterSchema, error)
-}
-
-type clientMonsterAccessor struct {
+type ClientMonsterAccessor struct {
 	client artifactsmmo.ClientWithResponsesInterface
 	logger *slog.Logger
 }
 
-func NewClientMonsterAccessor(client artifactsmmo.ClientWithResponsesInterface, logger *slog.Logger) MonsterAccessor {
-	return &clientMonsterAccessor{client, logger}
+func NewClientMonsterAccessor(client artifactsmmo.ClientWithResponsesInterface, logger *slog.Logger) *ClientMonsterAccessor {
+	return &ClientMonsterAccessor{client, logger}
 }
 
 func orDefault[T any](ptr *T, defaultValue T) T {
@@ -36,7 +25,7 @@ func orDefault[T any](ptr *T, defaultValue T) T {
 	return defaultValue
 }
 
-func (accessor *clientMonsterAccessor) GetAllMonsters(
+func (accessor *ClientMonsterAccessor) GetAllMonsters(
 	minLevel *int,
 	maxLevel *int,
 	drop *string,
@@ -80,7 +69,7 @@ func (accessor *clientMonsterAccessor) GetAllMonsters(
 	return &resp.JSON200.Data, nil
 }
 
-func (accessor *clientMonsterAccessor) GetMonster(code string) (*artifactsmmo.MonsterSchema, error) {
+func (accessor *ClientMonsterAccessor) GetMonster(code string) (*artifactsmmo.MonsterSchema, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 

@@ -8,24 +8,19 @@ import (
 	artifactsmmo "github.com/promiseofcake/artifactsmmo-go-client/client"
 )
 
-type MapAccessor interface {
-	GetAllMaps(contentType *string, contentCode *string, page *int, size *int) ([]artifactsmmo.MapSchema, error)
-	GetMap(x int, y int) (*artifactsmmo.MapSchema, error)
-}
-
-type clientMapAccessor struct {
+type ClientMapAccessor struct {
 	client artifactsmmo.ClientWithResponsesInterface
 	logger *slog.Logger
 }
 
-func NewClientMapAccessor(client artifactsmmo.ClientWithResponsesInterface, logger *slog.Logger) MapAccessor {
-	return &clientMapAccessor{
+func NewClientMapAccessor(client artifactsmmo.ClientWithResponsesInterface, logger *slog.Logger) *ClientMapAccessor {
+	return &ClientMapAccessor{
 		client: client,
 		logger: logger,
 	}
 }
 
-func (accessor *clientMapAccessor) GetAllMaps(
+func (accessor *ClientMapAccessor) GetAllMaps(
 	contentType *string,
 	contentCode *string,
 	page *int,
@@ -52,7 +47,7 @@ func (accessor *clientMapAccessor) GetAllMaps(
 	return mapResp.JSON200.Data, nil
 }
 
-func (accessor *clientMapAccessor) GetMap(x int, y int) (*artifactsmmo.MapSchema, error) {
+func (accessor *ClientMapAccessor) GetMap(x int, y int) (*artifactsmmo.MapSchema, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 

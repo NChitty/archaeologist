@@ -4,23 +4,24 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/NChitty/archaeologist/pkg/characters"
+	"github.com/NChitty/archaeologist/pkg/actors"
 	"github.com/NChitty/archaeologist/pkg/fights"
 	"github.com/NChitty/archaeologist/pkg/items"
 	"github.com/NChitty/archaeologist/pkg/items/effects"
+	"github.com/NChitty/archaeologist/pkg/models/character"
 	artifactsmmo "github.com/promiseofcake/artifactsmmo-go-client/client"
 	"github.com/stretchr/testify/assert"
 )
 
 func Test(t *testing.T) {
 	type testCase struct {
-		character      *characters.CharacterWrapper
+		character      *character.Character
 		monster        *artifactsmmo.MonsterSchema
-		expectedResult fights.FightResult
+		expectedResult actors.FightResult
 	}
 	testCases := []testCase{
 		testCase{
-			character: characters.FromSchema(artifactsmmo.CharacterSchema{
+			character: character.FromSchema(artifactsmmo.CharacterSchema{
 				MaxHp:      120,
 				WeaponSlot: "copper_dagger",
 			}),
@@ -28,18 +29,18 @@ func Test(t *testing.T) {
 				Hp:          60,
 				AttackWater: 4,
 			},
-			expectedResult: fights.FightResult{
-				true,
-				19,
-				10,
-				36,
-				0,
-				6,
-				4,
+			expectedResult: actors.FightResult{
+				Win:             true,
+				Turns:           19,
+				CharacterTurns:  10,
+				CharacterHpLoss: 36,
+				RestoreTurns:    0,
+				CharacterDmg:    6,
+				MonsterDmg:      4,
 			},
 		},
 		testCase{
-			character: characters.FromSchema(artifactsmmo.CharacterSchema{
+			character: character.FromSchema(artifactsmmo.CharacterSchema{
 				MaxHp:         220,
 				WeaponSlot:    "sticky_sword",
 				ShieldSlot:    "wooden_shield",
@@ -70,18 +71,18 @@ func Test(t *testing.T) {
 				ResWater:    0,
 				ResAir:      0,
 			},
-			expectedResult: fights.FightResult{
-				true,
-				9,
-				5,
-				32,
-				0,
-				14,
-				8,
+			expectedResult: actors.FightResult{
+				Win:             true,
+				Turns:           9,
+				CharacterTurns:  5,
+				CharacterHpLoss: 32,
+				RestoreTurns:    0,
+				CharacterDmg:    14,
+				MonsterDmg:      8,
 			},
 		},
 		testCase{
-			character: characters.FromSchema(artifactsmmo.CharacterSchema{
+			character: character.FromSchema(artifactsmmo.CharacterSchema{
 				MaxHp:         220,
 				WeaponSlot:    "sticky_sword",
 				ShieldSlot:    "wooden_shield",
@@ -112,18 +113,18 @@ func Test(t *testing.T) {
 				ResWater:    0,
 				ResAir:      25,
 			},
-			expectedResult: fights.FightResult{
-				true,
-				9,
-				5,
-				48,
-				0,
-				18,
-				12,
+			expectedResult: actors.FightResult{
+				Win:             true,
+				Turns:           9,
+				CharacterTurns:  5,
+				CharacterHpLoss: 48,
+				RestoreTurns:    0,
+				CharacterDmg:    18,
+				MonsterDmg:      12,
 			},
 		},
 		testCase{
-			character: characters.FromSchema(artifactsmmo.CharacterSchema{
+			character: character.FromSchema(artifactsmmo.CharacterSchema{
 				MaxHp:         220,
 				WeaponSlot:    "sticky_sword",
 				ShieldSlot:    "wooden_shield",
@@ -154,18 +155,18 @@ func Test(t *testing.T) {
 				ResWater:    0,
 				ResAir:      0,
 			},
-			expectedResult: fights.FightResult{
-				true,
-				13,
-				7,
-				108,
-				0,
-				18,
-				18,
+			expectedResult: actors.FightResult{
+				Win:             true,
+				Turns:           13,
+				CharacterTurns:  7,
+				CharacterHpLoss: 108,
+				RestoreTurns:    0,
+				CharacterDmg:    18,
+				MonsterDmg:      18,
 			},
 		},
 		testCase{
-			character: characters.FromSchema(artifactsmmo.CharacterSchema{
+			character: character.FromSchema(artifactsmmo.CharacterSchema{
 				MaxHp:         220,
 				WeaponSlot:    "sticky_sword",
 				ShieldSlot:    "wooden_shield",
@@ -196,14 +197,14 @@ func Test(t *testing.T) {
 				ResWater:    30,
 				ResAir:      0,
 			},
-			expectedResult: fights.FightResult{
-				true,
-				25,
-				13,
-				112,
-				7,
-				23,
-				21,
+			expectedResult: actors.FightResult{
+				Win:             true,
+				Turns:           25,
+				CharacterTurns:  13,
+				CharacterHpLoss: 112,
+				RestoreTurns:    7,
+				CharacterDmg:    23,
+				MonsterDmg:      21,
 			},
 		},
 	}
