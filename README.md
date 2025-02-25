@@ -10,21 +10,21 @@ The DiscordBot allows to create actors from bot commands. The web app portion is
 and store the token for use with the given actor.
 
 # Features
-- [x] Gathering actor
-    - [x] Do the `Gather` action on a map tile until the goal quantity of item is reached
-    - [ ] Fight a mob until the goal quantity of item is reached
-- [x] Crafting actor
-    - [x] Recursively create gathering and intermediate crafting actors to get prerequisite items
-    - [ ] Manage inventory for higher quantity crafts
-- [x] Simulate fights
-    - [x] Basic fight simulation with restore and other utility effects
-    - [ ] Simulation with effects from Season 4
-- [x] Fighting actor
-    - [x] Take the task of the given character and fight a mob until the task is complete
-    - [ ] Collect a quantity of a drop from a fight
-    - [x] Heal from consumable items in inventory
-        - [x] Quit fighting if you would prefer not to rest
-    - [x] Rest between fights to recoup HP
-- [ ] Inventory management
-    - [ ] Deposit all items
-    - [ ] Loadouts
+- :white_check_mark: Gathering actor
+    - :white_check_mark: Do the `Gather` action on a map tile until the goal quantity of item is reached
+    - :clipboard: Fight a mob until the goal quantity of item is reached
+- :white_check_mark: Crafting actor
+    - :white_check_mark: Recursively create gathering and intermediate crafting actors to get prerequisite items
+    - :clipboard: Manage inventory for higher quantity crafts
+- :white_check_mark: Simulate fights
+    - :white_check_mark: Basic fight simulation with restore and other utility effects
+    - :clipboard: Simulation with effects from Season 4
+- :white_check_mark: Fighting actor
+    - :white_check_mark: Take the task of the given character and fight a mob until the task is complete
+    - :clipboard: Collect a quantity of a drop from a fight
+    - :white_check_mark: Heal from consumable items in inventory
+        - :white_check_mark: Quit fighting if you would prefer not to rest
+    - :white_check_mark: Rest between fights to recoup HP
+- :clipboard: Inventory management
+    - :clipboard: Deposit all items
+    - :clipboard: Loadouts
