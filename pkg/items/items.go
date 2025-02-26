@@ -148,6 +148,9 @@ func (service *ItemService) IsGatherable(item *artifactsmmo.ItemSchema) bool {
 	if item.Type != "resource" {
 		return false
 	}
+  if item.Subtype == "mob" {
+    return true
+  }
 
 	resources, err := service.GetAllResources(nil, &item.Code)
 	if err != nil {

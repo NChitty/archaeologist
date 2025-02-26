@@ -48,6 +48,19 @@ type MonsterAdapter interface {
 	GetMonster(code string) (*artifactsmmo.MonsterSchema, error)
 }
 
+type Config[C CharacterAdapter] struct {
+	characterAdapter C
+	fightSimulator   FightSimulator
+	itemAdapter      ItemAdapter
+	mapAdapter       MapAdapter
+	monsterAdapter   MonsterAdapter
+	logger           *slog.Logger
+}
+
+func NewConfig[C CharacterAdapter](ca C, fs FightSimulator, ia ItemAdapter, ma MapAdapter, moa MonsterAdapter, logger *slog.Logger) *Config[C] {
+	return &Config[C]{ca, fs, ia, ma, moa, logger}
+}
+
 func move(mapAdapter MapAdapter, characterAdapter CharacterAdapter, character *character.Character, contentType *string, contentCode *string) error {
 	maps, err := mapAdapter.GetAllMaps(
 		contentType,

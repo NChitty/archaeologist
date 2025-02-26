@@ -12,7 +12,7 @@ and store the token for use with the given actor.
 # Features
 - :white_check_mark: Gathering actor
     - :white_check_mark: Do the `Gather` action on a map tile until the goal quantity of item is reached
-    - :clipboard: Fight a mob until the goal quantity of item is reached
+    - :white_check_mark: Fight a mob until the goal quantity of item is reached
 - :white_check_mark: Crafting actor
     - :white_check_mark: Recursively create gathering and intermediate crafting actors to get prerequisite items
     - :clipboard: Manage inventory for higher quantity crafts

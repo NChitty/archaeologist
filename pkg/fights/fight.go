@@ -7,8 +7,8 @@ import (
 
 	"github.com/NChitty/archaeologist/pkg/actors"
 	"github.com/NChitty/archaeologist/pkg/items/effects"
-	"github.com/NChitty/archaeologist/pkg/models/item"
 	"github.com/NChitty/archaeologist/pkg/models/character"
+	"github.com/NChitty/archaeologist/pkg/models/item"
 	artifactsmmo "github.com/promiseofcake/artifactsmmo-go-client/client"
 )
 
@@ -169,7 +169,7 @@ func (service *FightService) calculateMonsterResult(
 	characterHp := characterMaxHpWithBoost
 	monsterHp := monster.Hp
 	restoreTurns := 0
-	for i := 1; characterHp >= 0 && monsterHp >= 0; i += 2 {
+	for i := 1; characterHp >= 0 || monsterHp >= 0; i += 2 {
 		if characterHp < halfCharacterMaxHpWithBoost {
 			restoreValue := service.effectAccumulator.GetRestoreEffect(restoreTurns)
 			if restoreValue > 0 {
@@ -178,10 +178,14 @@ func (service *FightService) calculateMonsterResult(
 			characterHp += restoreValue
 		}
 		monsterHp -= characterDmg
-		if monsterHp > 0 {
-			monsterTurn++
-			characterHp -= monsterDmg
+		if characterHp <= 0 {
+			break
 		}
+		if monsterHp <= 0 {
+			break
+		}
+		monsterTurn++
+		characterHp -= monsterDmg
 	}
 	return monsterResult{
 		monsterTurn,

@@ -107,7 +107,7 @@ func (service *CharacterService) Fight(character *character.Character) (*actors.
 		return nil, &ActionError{*character.CooldownExpiration, string(fightResp.Body)}
 	}
 
-  service.logger.Info("Finished fight", "fightResult", fightResp.JSON200.Data.Fight)
+	service.logger.Info("Finished fight", "fightResult", fightResp.JSON200.Data.Fight)
 	character.FromSchema(fightResp.JSON200.Data.Character)
 
 	return &actors.ActionResult{
@@ -128,6 +128,9 @@ func (service *CharacterService) Gather(character *character.Character) (*actors
 	if err != nil {
 		service.logger.Error("Could not gather", "error", err)
 		return nil, err
+	}
+	if errors.Is(context.DeadlineExceeded, ctx.Err()) {
+		return service.Gather(character)
 	}
 	if ctx.Err() != nil {
 		return nil, ctx.Err()

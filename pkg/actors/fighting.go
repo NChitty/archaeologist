@@ -5,12 +5,13 @@ import (
 	"log/slog"
 	"math"
 	"sync"
-	"time"
 
 	"github.com/NChitty/archaeologist/pkg/models/character"
 	"github.com/NChitty/archaeologist/pkg/models/item"
 	artifactsmmo "github.com/promiseofcake/artifactsmmo-go-client/client"
 )
+
+var ExitOnRest error = errors.New("Exit on rest")
 
 type FightingCharacterAdapter interface {
 	CharacterAdapter
@@ -33,106 +34,12 @@ type FightSimulator interface {
 	CalculateFightResult(character *character.Character, monster *artifactsmmo.MonsterSchema) (*FightResult, error)
 }
 
-type TaskFightingActor struct {
-	monster          string
-	quantity         int
-	exitOnRest       bool
-	characterService FightingCharacterAdapter
-	fightService     FightSimulator
-	itemAccessor     ItemAdapter
-	mapAccessor      MapAdapter
-	monsterAccessor  MonsterAdapter
-	logger           *slog.Logger
-}
-
-var ExitOnRest error = errors.New("Exit on rest")
-
-func NewTaskFightingActor(
+func buildUseSchema(
 	character *character.Character,
-	exitOnRest bool,
-	characterService FightingCharacterAdapter,
-	fightService FightSimulator,
-	itemAccessor ItemAdapter,
-	mapAccessor MapAdapter,
-	monsterAccessor MonsterAdapter,
-	logger *slog.Logger,
-) (Actor, error) {
-	if character.TaskType != "monsters" {
-		return nil, errors.New("Unsupported task type: " + character.TaskType)
-	}
-	logger.Info("Created new Task Fighting Actor", "monster", character.Task, "taskTotal", character.TaskTotal, "taskProgress", character.TaskProgress)
-	return &TaskFightingActor{
-		monster:          character.Task,
-		quantity:         character.TaskTotal,
-		exitOnRest:       exitOnRest,
-		characterService: characterService,
-		fightService:     fightService,
-		itemAccessor:     itemAccessor,
-		mapAccessor:      mapAccessor,
-		monsterAccessor:  monsterAccessor,
-		logger:           logger,
-	}, nil
-}
-
-func (actor *TaskFightingActor) Do(character *character.Character) error {
-	actor.characterService.UpdateCharacter(character)
-	monster, err := actor.monsterAccessor.GetMonster(actor.monster)
-	if err != nil {
-		actor.logger.Error("Could not find monster with code", "error", err)
-		return err
-	}
-
-	fightResult, err := actor.fightService.CalculateFightResult(character, monster)
-	if err != nil {
-		actor.logger.Error("Could not simulate fight", "error", err)
-		return err
-	}
-
-	if !fightResult.Win {
-		return errors.New("Fight is not winnable in the worst-case")
-	}
-
-	err = actor.heal(character, fightResult)
-	if err != nil {
-		return err
-	}
-
-	err = move(actor.mapAccessor, actor.characterService, character, nil, &actor.monster)
-	if err != nil {
-		actor.logger.Error("Could not move character", "error", err)
-		return err
-	}
-
-	for character.TaskProgress < character.TaskTotal {
-		fightRes, err := actor.characterService.Fight(character)
-		if err != nil {
-			return err
-		}
-		time.Sleep(fightRes.CooldownRemaining)
-
-		if fightResult.RestoreTurns > 0 {
-			fightResult, err = actor.fightService.CalculateFightResult(character, monster)
-			if err != nil {
-				actor.logger.Error("Could not simulate fight", "error", err)
-				return err
-			}
-			if !fightResult.Win {
-				return errors.New("Fight is not winnable in the worst-case")
-			}
-		}
-		err = actor.heal(character, fightResult)
-		if err != nil {
-			if errors.Is(err, ExitOnRest) {
-				return nil
-			}
-			return err
-		}
-	}
-
-	return nil
-}
-
-func buildUseSchema(character *character.Character, healingItems map[string]*artifactsmmo.ItemSchema, targetHealing int) *artifactsmmo.SimpleItemSchema {
+	healingItems map[string]*artifactsmmo.ItemSchema,
+	minHealing int,
+	targetHealing int,
+) *artifactsmmo.SimpleItemSchema {
 	type optimizer struct {
 		delta int
 		code  string
@@ -146,20 +53,22 @@ func buildUseSchema(character *character.Character, healingItems map[string]*art
 	for code, healItem := range healingItems {
 		effectMap := mapEffects(healItem.Effects)
 		healing, present := effectMap[item.HealEffect]
-		if present && float64(targetHealing)/float64(healing) > 1 {
-			hasQty := character.Inventory[healItem.Code].Quantity
-			neededQty := targetHealing / healing
-			qty := neededQty
-			delta := (targetHealing % healing) * -1
-			if hasQty < neededQty {
-				delta = healing*hasQty - targetHealing
-				qty = hasQty
-			}
-			if math.Abs(float64(min.delta)) > math.Abs(float64(delta)) {
-				min.delta = delta
-				min.qty = qty
-				min.code = code
-			}
+		// healing > min and closest to target
+		if present && (minHealing/healing)+1 >= character.Inventory[code].Quantity {
+			// this item cannot heal enough
+			continue
+		}
+		neededQty := targetHealing / healing
+		qty := neededQty
+		if neededQty > character.Inventory[code].Quantity {
+			// do not have enough to reach targetHealing
+			qty = character.Inventory[code].Quantity
+		}
+		delta := targetHealing - healing*qty
+		if math.Abs(float64(min.delta)) > math.Abs(float64(delta)) {
+			min.delta = delta
+			min.code = code
+			min.qty = qty
 		}
 	}
 	return &artifactsmmo.SimpleItemSchema{
@@ -207,42 +116,4 @@ func getHealingItems(itemAccessor ItemAdapter, character *character.Character, l
 	}
 	wg.Wait()
 	return consumables
-}
-
-func (actor *TaskFightingActor) heal(character *character.Character, fightResult *FightResult) error {
-	if fightResult.CharacterHpLoss >= character.Hp {
-		actor.logger.Warn(
-			"Expected HP loss of fight is greater than current HP - healing...",
-			"hp",
-			character.Hp,
-			"hpLoss",
-			fightResult.CharacterHpLoss,
-		)
-
-		healingItems := getHealingItems(actor.itemAccessor, character, actor.logger)
-
-		if len(healingItems) == 0 && actor.exitOnRest {
-			return ExitOnRest
-		}
-
-		if len(healingItems) == 0 {
-			actor.logger.Info("No healing items, resting...")
-			healRes, err := actor.characterService.Rest(character)
-			if err != nil {
-				return err
-			}
-			time.Sleep(healRes.CooldownRemaining)
-			return nil
-		}
-
-		targetHealing := character.MaxHp - character.Hp
-		useSchema := buildUseSchema(character, healingItems, targetHealing)
-		healRes, err := actor.characterService.Use(character, useSchema)
-		if err != nil {
-			actor.logger.Error("Could not use item", "use", *useSchema, "error", err)
-			return err
-		}
-		time.Sleep(healRes.CooldownRemaining)
-	}
-	return nil
 }

@@ -22,13 +22,6 @@ import (
 	artifactsmmo "github.com/promiseofcake/artifactsmmo-go-client/client"
 )
 
-var characterService *characters.CharacterService
-var itemService *items.ItemService
-var effectAccumulator *effects.EffectAccumulator
-var fightService *fights.FightService
-var mapAccessor *maps.ClientMapAccessor
-var monsterAccessor *monsters.ClientMonsterAccessor
-
 func main() {
 	logFile, err := os.Create(fmt.Sprintf("%s.log", time.Now().Format("2006-01-02_15-04")))
 	if err != nil {
@@ -79,12 +72,16 @@ func main() {
 
 	selectedCharacter := character.FromSchema(accountCharacters[choice-1])
 	selectedCharacter.Token = token
-	characterService := characters.NewCharacterService(logger, client)
-	itemService = items.DefaultItemService()
-	effectAccumulator = effects.New(slog.Default())
-	fightService = fights.NewFightService(effectAccumulator, slog.Default(), itemService)
-	mapAccessor = maps.NewClientMapAccessor(client, slog.Default())
-	monsterAccessor = monsters.NewClientMonsterAccessor(client, slog.Default())
+  effectAccumulator := effects.New(slog.Default())
+  itemAdapter := items.DefaultItemService()
+  adapters := actors.NewConfig(
+    characters.NewCharacterService(logger, client),
+    fights.NewFightService(effectAccumulator, slog.Default(), itemAdapter),
+    itemAdapter,
+    maps.NewClientMapAccessor(client, slog.Default()),
+    monsters.NewClientMonsterAccessor(client, slog.Default()),
+    logger,
+  )
 
 	var actor actors.Actor
 	actorQueue := make(chan struct {
@@ -106,7 +103,7 @@ func main() {
 		switch choice {
 		case 1:
 			code, qty := ItemInput(logger, "gather", "gather")
-			actor, err = actors.NewGatherActor(code, qty, characterService, itemService, mapAccessor, logger)
+			actor, err = actors.NewGatherActor(selectedCharacter, code, qty, adapters)
 			if err != nil {
 				fmt.Errorf("Error: %w", err)
 				continue
@@ -117,7 +114,7 @@ func main() {
 			}{actor, selectedCharacter}
 		case 2:
 			code, qty := ItemInput(logger, "craft", "craft")
-			actor, err = actors.NewCraftingActor(code, qty, characterService, itemService, mapAccessor, logger)
+			actor, err = actors.NewCraftingActor(code, qty, adapters)
 			if err != nil {
 				fmt.Errorf("Error: %w", err)
 				continue
@@ -139,7 +136,7 @@ func main() {
 				logger.Error("Did not understand the input", "error", err)
 				continue
 			}
-			actor, err := actors.NewTaskFightingActor(selectedCharacter, exitOnRest, characterService, fightService, itemService, mapAccessor, monsterAccessor, logger)
+			actor, err := actors.NewTaskFightingActor(selectedCharacter, exitOnRest, adapters)
 			if err != nil {
 				fmt.Printf("An error occurred: %v\n", err)
 				continue

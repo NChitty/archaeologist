@@ -11,13 +11,14 @@ import (
 
 type GatheringCharacterAdapter interface {
 	CharacterAdapter
+	FightingCharacterAdapter
 	Gather(character *character.Character) (*ActionResult, error)
 }
 
-type GatherActor[T GatheringCharacterAdapter] struct {
+type GatherActor struct {
 	GoalItem         *artifactsmmo.ItemSchema
 	GoalQuantity     int
-	characterService T
+	characterService GatheringCharacterAdapter
 	itemService      ItemAdapter
 	mapService       MapAdapter
 	logger           *slog.Logger
@@ -25,42 +26,40 @@ type GatherActor[T GatheringCharacterAdapter] struct {
 
 var GatherSkills = [4]string{"mining", "woodcutting", "fishing", "alchemy"}
 
-func NewGatherActor[T GatheringCharacterAdapter](
+func NewGatherActor[C GatheringCharacterAdapter](
+	character *character.Character,
 	goalCode string,
 	goalQuantity int,
-	characterService T,
-	itemService ItemAdapter,
-	mapService MapAdapter,
-	logger *slog.Logger,
+	config *Config[C],
 ) (Actor, error) {
-	item, err := itemService.GetItem(goalCode)
+	item, err := config.itemAdapter.GetItem(goalCode)
 	if err != nil {
-		logger.Error("Could not retrieve item info", "error", err)
+		config.logger.Error("Could not retrieve item info", "error", err)
 		return nil, err
 	}
 
 	if item.Subtype == "mob" {
-		logger.Error("Fighting is not a currently supported operation")
+		return NewDropsFightingActor(character, goalCode, goalQuantity, config)
+	}
+
+	if !config.itemAdapter.IsGatherable(item) {
+		config.logger.Error("This item is not gatherable", "item", *item)
 		return nil, errors.ErrUnsupported
 	}
 
-	if !itemService.IsGatherable(item) {
-		logger.Error("This item is not gatherable", "item", *item)
-		return nil, errors.ErrUnsupported
-	}
+	config.logger.Info("Created gathering actor", "item", *item, "qty", goalQuantity)
 
-	logger.Info("Created gathering actor", "item", *item, "qty", goalQuantity)
-
-	return &GatherActor[GatheringCharacterAdapter]{
+	return &GatherActor{
 		GoalItem:         item,
 		GoalQuantity:     goalQuantity,
-		characterService: characterService,
-		itemService:      itemService,
-		mapService:       mapService,
-		logger:           logger}, nil
+		characterService: config.characterAdapter,
+		itemService:      config.itemAdapter,
+		mapService:       config.mapAdapter,
+		logger:           config.logger,
+	}, nil
 }
 
-func (actor *GatherActor[GatheringCharacterAdapter]) Do(character *character.Character) error {
+func (actor *GatherActor) Do(character *character.Character) error {
 	actor.characterService.UpdateCharacter(character)
 	resources, err := actor.itemService.GetAllResources(
 		(*artifactsmmo.GatheringSkill)(&actor.GoalItem.Subtype),
