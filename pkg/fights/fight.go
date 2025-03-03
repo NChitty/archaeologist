@@ -46,6 +46,8 @@ func NewFightService(
 	}
 }
 
+// Calculates the fight result without random effects such as critical strikes (and thus lifesteal)
+// and blocking.
 func (service *FightService) CalculateFightResult(
 	character *character.Character,
 	monster *artifactsmmo.MonsterSchema,
@@ -54,20 +56,38 @@ func (service *FightService) CalculateFightResult(
 	service.effectAccumulator.Reset()
 	service.effectAccumulator.Accumulate(equipment)
 	characterDmg := service.calculateCharacterDamage(monster)
-	characterTurns, err := calculateTurns(monster.Hp, characterDmg)
+	characterMaxTurns, err := calculateTurns(monster.Hp, characterDmg)
 	result := defaultFightResult()
 	if err != nil {
 		return &result, err
 	}
-	monsterResult := service.calculateMonsterResult(monster, character.MaxHp, characterTurns, characterDmg)
-	numberTurns := characterTurns*2 - 1
-	if monsterResult.monsterTurns < characterTurns {
-		numberTurns = monsterResult.monsterTurns * 2
+
+	if service.effectAccumulator.IsSimpleEffects() &&
+		!service.effectAccumulator.CanRestore() &&
+		len(*monster.Effects) == 0 {
+
+		monsterResult := service.calculateSimpleMonsterResult(monster, character.MaxHp, characterMaxTurns)
+		numberTurns := characterMaxTurns*2 - 1
+		if monsterResult.monsterTurns < characterMaxTurns {
+			numberTurns = monsterResult.monsterTurns * 2
+		}
+		return &actors.FightResult{
+			Win:             monsterResult.monsterTurns >= monsterResult.characterTurns,
+			Turns:           numberTurns,
+			CharacterTurns:  characterMaxTurns,
+			CharacterHpLoss: monsterResult.characterHpLoss,
+			RestoreTurns:    monsterResult.restoreTurns,
+			CharacterDmg:    characterDmg,
+			MonsterDmg:      monsterResult.monsterDmg,
+		}, nil
 	}
+
+	monsterResult := service.calculateMonsterResult(monster, character.MaxHp, characterDmg)
+	numberTurns := monsterResult.characterTurns + monsterResult.monsterTurns
 	return &actors.FightResult{
-		Win:             monsterResult.monsterTurns >= characterTurns,
+		Win:             monsterResult.monsterTurns < monsterResult.characterTurns,
 		Turns:           numberTurns,
-		CharacterTurns:  characterTurns,
+		CharacterTurns:  monsterResult.characterTurns,
 		CharacterHpLoss: monsterResult.characterHpLoss,
 		RestoreTurns:    monsterResult.restoreTurns,
 		CharacterDmg:    characterDmg,
@@ -126,7 +146,29 @@ func calculateTurns(hp int, dmg int) (int, error) {
 	return hp/dmg + 1, nil
 }
 
+func (service *FightService) calculateSimpleMonsterResult(
+	monster *artifactsmmo.MonsterSchema,
+	maxCharacterHp int,
+	maxCharacterTurn int,
+) monsterResult {
+	monsterDmg := service.calculateMonsterDamage(monster)
+	characterMaxHpWithBoost := maxCharacterHp + service.effectAccumulator.GetEffect(item.BoostHpEffect)
+	monsterTurn, err := calculateTurns(characterMaxHpWithBoost, service.calculateMonsterDamage(monster))
+
+	if err != nil {
+		return monsterResult{maxCharacterTurn, maxCharacterTurn - 1, 0, 0, 0}
+	}
+
+	monsterTotalDmg := monsterDmg * monsterTurn
+	if monsterTurn > maxCharacterTurn {
+		monsterTotalDmg = monsterDmg * (maxCharacterTurn - 1)
+	}
+	return monsterResult{maxCharacterTurn, monsterTurn, 0,
+		max(0, monsterTotalDmg-(characterMaxHpWithBoost-maxCharacterHp)), monsterDmg}
+}
+
 type monsterResult struct {
+	characterTurns  int
 	monsterTurns    int
 	restoreTurns    int
 	characterHpLoss int
@@ -136,40 +178,43 @@ type monsterResult struct {
 func (service *FightService) calculateMonsterResult(
 	monster *artifactsmmo.MonsterSchema,
 	maxCharacterHp int,
-	maxCharacterTurn int,
 	characterDmg int,
 ) monsterResult {
 	monsterDmg := service.calculateMonsterDamage(monster)
 	characterMaxHpWithBoost := maxCharacterHp + service.effectAccumulator.GetEffect(item.BoostHpEffect)
 	halfCharacterMaxHpWithBoost := characterMaxHpWithBoost / 2
-	if !service.effectAccumulator.CanRestore() {
-		monsterTurn, err := calculateTurns(characterMaxHpWithBoost, service.calculateMonsterDamage(monster))
 
-		if err != nil {
-			return monsterResult{maxCharacterTurn - 1, 0, 0, 0}
-		}
-
-		monsterTotalDmg := monsterDmg * monsterTurn
-		if monsterTurn > maxCharacterTurn {
-			monsterTotalDmg = monsterDmg * (maxCharacterTurn - 1)
-		}
-		return monsterResult{monsterTurn, 0,
-			max(0, monsterTotalDmg-(characterMaxHpWithBoost-maxCharacterHp)), monsterDmg}
+	type statusEffects struct {
+		poison int
+		burn   float64
 	}
-	halfMonsterTurn, err := calculateTurns(halfCharacterMaxHpWithBoost, service.calculateMonsterDamage(monster))
-	if err != nil {
-		return monsterResult{maxCharacterTurn - 1, 0, 0, 0}
+	characterStatusEffects := statusEffects{
+		poison: 0,
+		burn:   0,
 	}
-	if halfMonsterTurn >= maxCharacterTurn {
-		return monsterResult{halfMonsterTurn * 2, 0,
-			max(0, (maxCharacterTurn-1)*monsterDmg-(characterMaxHpWithBoost-maxCharacterHp)),
-			monsterDmg}
+	monsterStatusEffects := statusEffects{
+		poison: 0,
+		burn:   0,
 	}
-	monsterTurn := halfMonsterTurn
+	var monsterBurnDeduction float64
+	var characterBurnDeduction float64
+	monsterTurn := 1
+	characterTurn := 1
 	characterHp := characterMaxHpWithBoost
 	monsterHp := monster.Hp
 	restoreTurns := 0
-	for i := 1; characterHp >= 0 || monsterHp >= 0; i += 2 {
+	cureTurns := 0
+	for characterHp >= 0 || monsterHp >= 0 {
+		if characterTurn == 1 {
+			monsterStatusEffects.poison = service.effectAccumulator.GetEffect(item.PoisonEffect)
+			monsterStatusEffects.burn = float64(service.effectAccumulator.GetEffect(item.BurnEffect)) / 100 *
+				(float64(service.effectAccumulator.GetEffect(item.AttackAirEffect)) +
+					float64(service.effectAccumulator.GetEffect(item.AttackEarthEffect)) +
+					float64(service.effectAccumulator.GetEffect(item.AttackFireEffect)) +
+					float64(service.effectAccumulator.GetEffect(item.AttackWaterEffect)))
+			characterBurnDeduction = float64(monsterStatusEffects.burn) / 10
+		}
+		characterTurn++
 		if characterHp < halfCharacterMaxHpWithBoost {
 			restoreValue := service.effectAccumulator.GetRestoreEffect(restoreTurns)
 			if restoreValue > 0 {
@@ -177,17 +222,59 @@ func (service *FightService) calculateMonsterResult(
 			}
 			characterHp += restoreValue
 		}
+
+		if characterStatusEffects.poison > 0 {
+			cureValue := service.effectAccumulator.GetCureEffect(cureTurns)
+			if cureValue > 0 {
+				cureTurns++
+			}
+			characterStatusEffects.poison = characterStatusEffects.poison - cureValue
+		}
+
+		characterHp -= max(int(math.Round(characterStatusEffects.burn)), 0)
+		characterStatusEffects.burn = float64(characterStatusEffects.burn) - monsterBurnDeduction
+
+		characterHp -= max(characterStatusEffects.poison, 0)
+
 		monsterHp -= characterDmg
+
+		if characterHp <= 0 {
+			break
+		}
+
+		if characterTurn%3 == 0 && service.effectAccumulator.GetEffect(item.HealingEffect) != 0 {
+			characterHp = min(characterHp+int(math.Round(float64(service.effectAccumulator.GetEffect(item.HealingEffect))/100*float64(characterMaxHpWithBoost))), characterMaxHpWithBoost)
+		}
+
+		if monsterHp <= 0 {
+			break
+		}
+		if monsterTurn == 1 {
+			characterStatusEffects.poison = effects.GetEffect(monster.Effects, item.PoisonEffect)
+			characterStatusEffects.burn = float64(effects.GetEffect(monster.Effects, item.BurnEffect)) / 100 *
+				(float64(monster.AttackAir) +
+					float64(monster.AttackEarth) +
+					float64(monster.AttackFire) +
+					float64(monster.AttackWater))
+			monsterBurnDeduction = float64(characterStatusEffects.burn) / 10
+		}
+		monsterTurn++
+		if monsterTurn == effects.GetEffect(monster.Effects, item.ReconstitutionEffect) {
+			monsterHp = monster.Hp
+		}
+		monsterHp -= max(int(math.Round(monsterStatusEffects.burn)), 0)
+		monsterStatusEffects.burn = float64(monsterStatusEffects.burn) - characterBurnDeduction
+		monsterHp -= max(monsterStatusEffects.poison, 0)
+		characterHp -= monsterDmg
 		if characterHp <= 0 {
 			break
 		}
 		if monsterHp <= 0 {
 			break
 		}
-		monsterTurn++
-		characterHp -= monsterDmg
 	}
 	return monsterResult{
+		characterTurn,
 		monsterTurn,
 		restoreTurns,
 		max(0, maxCharacterHp-characterHp),

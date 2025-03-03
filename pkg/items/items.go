@@ -103,6 +103,7 @@ func (service *ItemService) GetCharacterEquipment(player *character.Character) *
 	equipmentCodes = append(equipmentCodes, equipment{player.BootsSlot, 1})
 	equipmentCodes = append(equipmentCodes, equipment{player.Ring1Slot, 1})
 	equipmentCodes = append(equipmentCodes, equipment{player.Ring2Slot, 1})
+	equipmentCodes = append(equipmentCodes, equipment{player.RuneSlot, 1})
 	equipmentCodes = append(equipmentCodes, equipment{player.AmuletSlot, 1})
 	equipmentCodes = append(equipmentCodes, equipment{player.Artifact1Slot, 1})
 	equipmentCodes = append(equipmentCodes, equipment{player.Artifact2Slot, 1})
@@ -148,9 +149,9 @@ func (service *ItemService) IsGatherable(item *artifactsmmo.ItemSchema) bool {
 	if item.Type != "resource" {
 		return false
 	}
-  if item.Subtype == "mob" {
-    return true
-  }
+	if item.Subtype == "mob" {
+		return true
+	}
 
 	resources, err := service.GetAllResources(nil, &item.Code)
 	if err != nil {

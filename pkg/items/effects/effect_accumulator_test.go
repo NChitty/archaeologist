@@ -18,24 +18,24 @@ func TestEffectAccumulator(t *testing.T) {
 		expectedRestoreResult []effects.RestoreEffect
 	}
 	testCases := []testCase{
-		testCase{
+		{
 			items: &[]character.Equipment{
-				character.Equipment{
+				{
 					Item: artifactsmmo.ItemSchema{
 						Effects: &[]artifactsmmo.SimpleEffectSchema{
-							artifactsmmo.SimpleEffectSchema{
-								Code:  item.HpEffect.GetEffectName(),
+							{
+								Code:  item.HpEffect.GetEffectCode(),
 								Value: 25,
 							},
 						},
 					},
 					Quantity: 1,
 				},
-				character.Equipment{
+				{
 					Item: artifactsmmo.ItemSchema{
 						Effects: &[]artifactsmmo.SimpleEffectSchema{
-							artifactsmmo.SimpleEffectSchema{
-								Code:  item.HpEffect.GetEffectName(),
+							{
+								Code:  item.HpEffect.GetEffectCode(),
 								Value: 25,
 							},
 						},
@@ -46,13 +46,13 @@ func TestEffectAccumulator(t *testing.T) {
 			expectedResult:        map[item.Effect]int{item.HpEffect: 50},
 			expectedRestoreResult: []effects.RestoreEffect{},
 		},
-		testCase{
+		{
 			items: &[]character.Equipment{
-				character.Equipment{
+				{
 					Item: artifactsmmo.ItemSchema{
 						Effects: &[]artifactsmmo.SimpleEffectSchema{
-							artifactsmmo.SimpleEffectSchema{
-								Code:  item.RestoreEffect.GetEffectName(),
+							{
+								Code:  item.RestoreEffect.GetEffectCode(),
 								Value: 20,
 							},
 						},
@@ -62,7 +62,7 @@ func TestEffectAccumulator(t *testing.T) {
 			},
 			expectedResult: map[item.Effect]int{},
 			expectedRestoreResult: []effects.RestoreEffect{
-				effects.RestoreEffect{
+				{
 					Quantity: 5,
 					Value:    20,
 				},

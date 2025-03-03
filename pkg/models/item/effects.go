@@ -34,7 +34,14 @@ const (
 
 	RestoreEffect
 
+	BurnEffect
 	HealEffect
+	HealingEffect
+	LifestealEffect
+	PoisonEffect
+	AntipoisonEffect
+	CriticalStrikeEffect
+	ReconstitutionEffect
 )
 
 var effectName = map[Effect]string{
@@ -69,7 +76,14 @@ var effectName = map[Effect]string{
 
 	RestoreEffect: "restore",
 
-	HealEffect: "heal",
+	AntipoisonEffect:     "antipoison",
+	BurnEffect:           "burn",
+	CriticalStrikeEffect: "critical_strike",
+	HealEffect:           "heal",
+	HealingEffect:        "healing",
+	LifestealEffect:      "lifesteal",
+	PoisonEffect:         "poison",
+	ReconstitutionEffect: "reconstitution",
 }
 
 var effect = map[string]Effect{
@@ -104,15 +118,22 @@ var effect = map[string]Effect{
 
 	"restore": RestoreEffect,
 
-	"heal": HealEffect,
+	"antipoison":      AntipoisonEffect,
+	"burn":            BurnEffect,
+	"critical_strike": CriticalStrikeEffect,
+	"heal":            HealEffect,
+	"healing":         HealingEffect,
+	"lifesteal":       LifestealEffect,
+	"poison":          PoisonEffect,
+	"reconstitution":  ReconstitutionEffect,
 }
 
-func (ie Effect) GetEffectName() string {
+func (ie Effect) GetEffectCode() string {
 	return effectName[ie]
 }
 
-func GetEffect(effectName string) Effect {
-	return effect[effectName]
+func GetEffect(effectCode string) Effect {
+	return effect[effectCode]
 }
 
 func Effects() map[Effect]string {

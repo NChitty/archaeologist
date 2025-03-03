@@ -9,7 +9,7 @@ import (
 
 func TestItemEffectsMapping(t *testing.T) {
   for k, v := range item.Effects() {
-    assert.Equal(t, v, k.GetEffectName())
+    assert.Equal(t, v, k.GetEffectCode())
     assert.Equal(t, k, item.GetEffect(v))
   }
 }

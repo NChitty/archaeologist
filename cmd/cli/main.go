@@ -72,16 +72,16 @@ func main() {
 
 	selectedCharacter := character.FromSchema(accountCharacters[choice-1])
 	selectedCharacter.Token = token
-  effectAccumulator := effects.New(slog.Default())
-  itemAdapter := items.DefaultItemService()
-  adapters := actors.NewConfig(
-    characters.NewCharacterService(logger, client),
-    fights.NewFightService(effectAccumulator, slog.Default(), itemAdapter),
-    itemAdapter,
-    maps.NewClientMapAccessor(client, slog.Default()),
-    monsters.NewClientMonsterAccessor(client, slog.Default()),
-    logger,
-  )
+	effectAccumulator := effects.New(slog.Default())
+	itemAdapter := items.DefaultItemService()
+	adapters := actors.NewConfig(
+		characters.NewCharacterService(logger, client),
+		fights.NewFightService(effectAccumulator, slog.Default(), itemAdapter),
+		itemAdapter,
+		maps.NewClientMapAccessor(client, slog.Default()),
+		monsters.NewClientMonsterAccessor(client, slog.Default()),
+		logger,
+	)
 
 	var actor actors.Actor
 	actorQueue := make(chan struct {
@@ -105,7 +105,7 @@ func main() {
 			code, qty := ItemInput(logger, "gather", "gather")
 			actor, err = actors.NewGatherActor(selectedCharacter, code, qty, adapters)
 			if err != nil {
-				fmt.Errorf("Error: %w", err)
+				fmt.Printf("Error creating gather actor:\n%s\n", fmt.Errorf("Error: %w", err))
 				continue
 			}
 			actorQueue <- struct {
@@ -116,7 +116,7 @@ func main() {
 			code, qty := ItemInput(logger, "craft", "craft")
 			actor, err = actors.NewCraftingActor(code, qty, adapters)
 			if err != nil {
-				fmt.Errorf("Error: %w", err)
+				fmt.Printf("Error creating crafting actor:\n%s\n", fmt.Errorf("Error: %w", err))
 				continue
 			}
 			actorQueue <- struct {
@@ -138,7 +138,7 @@ func main() {
 			}
 			actor, err := actors.NewTaskFightingActor(selectedCharacter, exitOnRest, adapters)
 			if err != nil {
-				fmt.Printf("An error occurred: %v\n", err)
+				fmt.Printf("Error creating task actor:\n%s\n", fmt.Errorf("Error: %w", err))
 				continue
 			}
 			fmt.Println("Created fighting actor")
