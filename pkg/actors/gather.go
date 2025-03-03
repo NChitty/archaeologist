@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log/slog"
 	"math"
+	"time"
 
 	"github.com/NChitty/archaeologist/pkg/models/character"
 	artifactsmmo "github.com/promiseofcake/artifactsmmo-go-client/client"
@@ -96,7 +97,7 @@ func (actor *GatherActor) Do(character *character.Character) error {
 	}
 
 	for {
-		_, err := actor.characterService.Gather(character)
+		gather, err := actor.characterService.Gather(character)
 		if err != nil {
 			actor.logger.Error("Could not gather resource", "error", err)
 			return err
@@ -114,6 +115,7 @@ func (actor *GatherActor) Do(character *character.Character) error {
 			actor.logger.Info("Finished gathering", "item", actor.GoalItem.Code, "qty", actor.GoalQuantity)
 			break
 		}
+		time.Sleep(gather.CooldownRemaining)
 	}
 
 	return nil

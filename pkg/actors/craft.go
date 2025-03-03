@@ -74,96 +74,61 @@ func (actor *CraftingActor[C]) Do(character *character.Character) error {
 		slot, isPresent := character.Inventory[item.Code]
 		needed := item.Quantity * actor.GoalQuantity / *actor.craftingRecipe.Quantity
 		actor.logger.Debug("Checking prereq", "code", item.Code, "qtyNeeded", needed)
+
+		itemSchema, err := actor.itemService.GetItem(item.Code)
+		if err != nil {
+			actor.logger.Error("Could not retrieve item info", "error", err)
+			return err
+		}
+
+		if isPresent && needed <= slot.Quantity {
+      continue
+		}
+
+		isGatherable := actor.itemService.IsGatherable(itemSchema)
+		isCraftable := actor.itemService.IsCraftable(itemSchema)
+		if !isCraftable && !isGatherable {
+			actor.logger.Error("Item is not attainable through gathering or crafting", "item", *itemSchema)
+			return errors.ErrUnsupported
+		}
+
+		if isGatherable && isCraftable {
+			// todo optimizer
+			prereqActor, err := NewGatherActor(character, item.Code, needed, actor.config)
+			if err != nil {
+				return err
+			}
+			err = prereqActor.Do(character)
+			if err != nil {
+				return err
+			}
+			continue
+		}
+
+		if isGatherable && !isCraftable {
+			prereqActor, err := NewGatherActor(character, item.Code, needed, actor.config)
+			if err != nil {
+				return err
+			}
+			err = prereqActor.Do(character)
+			if err != nil {
+				return err
+			}
+			continue
+		}
+
 		if isPresent && needed > slot.Quantity {
-			actor.logger.Debug("Do not have sufficient material", "item", item.Code, "qtyNeeded", needed, "qtyHave", slot.Quantity)
-			itemSchema, err := actor.itemService.GetItem(item.Code)
-			if err != nil {
-				actor.logger.Error("Could not retrieve item info", "error", err)
-				return err
-			}
-			if !actor.itemService.IsCraftable(itemSchema) &&
-				!actor.itemService.IsGatherable(itemSchema) {
-				actor.logger.Error("Item is not attainable through gathering or crafting", "item", *itemSchema)
-				return errors.ErrUnsupported
-			}
-			if actor.itemService.IsGatherable(itemSchema) &&
-				actor.itemService.IsCraftable(itemSchema) {
-				// todo optimizer
-				prereqActor, err := NewGatherActor(character, item.Code, needed, actor.config)
-				if err != nil {
-					return err
-				}
-				err = prereqActor.Do(character)
-				if err != nil {
-					return err
-				}
-				continue
-			}
-			if actor.itemService.IsGatherable(itemSchema) &&
-				!actor.itemService.IsCraftable(itemSchema) {
-				prereqActor, err := NewGatherActor(character, item.Code, needed, actor.config)
-				if err != nil {
-					return err
-				}
-				err = prereqActor.Do(character)
-				if err != nil {
-					return err
-				}
-				continue
-			}
-			prereqActor, err := NewCraftingActor(item.Code, needed-slot.Quantity, actor.config)
-			if err != nil {
-				return err
-			}
-			err = prereqActor.Do(character)
-			if err != nil {
-				return err
-			}
-		} else if !isPresent {
-			actor.logger.Debug("Do not have sufficient material", "item", item.Code, "qtyNeeded", needed, "qtyHave", 0)
-			itemSchema, err := actor.itemService.GetItem(item.Code)
-			if err != nil {
-				actor.logger.Error("Could not retrieve item info", "error", err)
-				return err
-			}
-			if !actor.itemService.IsCraftable(itemSchema) &&
-				!actor.itemService.IsGatherable(itemSchema) {
-				actor.logger.Error("This item is not gatherable", "item", *itemSchema)
-				return errors.ErrUnsupported
-			}
-			if actor.itemService.IsGatherable(itemSchema) &&
-				actor.itemService.IsCraftable(itemSchema) {
-				// todo optimizer
-				prereqActor, err := NewGatherActor(character, item.Code, needed, actor.config)
-				if err != nil {
-					return err
-				}
-				err = prereqActor.Do(character)
-				if err != nil {
-					return err
-				}
-				continue
-			}
-			if actor.itemService.IsGatherable(itemSchema) &&
-				!actor.itemService.IsCraftable(itemSchema) {
-				prereqActor, err := NewGatherActor(character, item.Code, needed, actor.config)
-				if err != nil {
-					return err
-				}
-				err = prereqActor.Do(character)
-				if err != nil {
-					return err
-				}
-				continue
-			}
-			prereqActor, err := NewCraftingActor(item.Code, needed-slot.Quantity, actor.config)
-			if err != nil {
-				return err
-			}
-			err = prereqActor.Do(character)
-			if err != nil {
-				return err
-			}
+			needed -= slot.Quantity
+		}
+
+		prereqActor, err := NewCraftingActor(item.Code, needed, actor.config)
+		if err != nil {
+			return err
+		}
+
+		err = prereqActor.Do(character)
+		if err != nil {
+			return err
 		}
 	}
 

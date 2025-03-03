@@ -38,7 +38,7 @@ func (client mockHttpClient) Do(req *http.Request) (*http.Response, error) {
 		Status:     mockResponse.status,
 		StatusCode: mockResponse.statusCode,
 		Body:       io.NopCloser(bytes.NewBufferString(mockResponse.response)),
-		Header:     map[string][]string{"Content-Type": []string{"application/json"}},
+		Header:     map[string][]string{"Content-Type": {"application/json"}},
 	}, nil
 }
 
@@ -48,12 +48,12 @@ func TestGetItem(t *testing.T) {
 		"none",
 		artifactsmmo.WithHTTPClient(mockHttpClient{
 			responses: map[string]mockResponse{
-				"/items/dne": mockResponse{
+				"/items/dne": {
 					status:     "404 Not Found",
 					statusCode: 404,
 					response:   dne,
 				},
-				"/items/copper_ore": mockResponse{
+				"/items/copper_ore": {
 					status:     "200 OK",
 					statusCode: 200,
 					response:   copperOre,
@@ -73,11 +73,11 @@ func TestGetItem(t *testing.T) {
 		expected result
 	}
 	testCases := []testCase{
-		testCase{
+		{
 			item:     "dne",
 			expected: result{nil, errors.New("Item not found.")},
 		},
-		testCase{
+		{
 			item: "copper_ore",
 			expected: result{&artifactsmmo.ItemSchema{
 				Name:        "Copper Ore",

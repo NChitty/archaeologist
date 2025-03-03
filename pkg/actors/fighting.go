@@ -102,7 +102,7 @@ func getHealingItems(itemAccessor ItemAdapter, character *character.Character, l
 			}
 			canHeal := false
 			for _, effect := range *slotItem.Effects {
-				if effect.Code == item.HealEffect.GetEffectName() {
+				if effect.Code == item.HealEffect.GetEffectCode() {
 					canHeal = true
 					break
 				}
