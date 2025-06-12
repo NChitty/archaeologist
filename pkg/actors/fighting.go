@@ -30,6 +30,26 @@ type FightResult struct {
 	MonsterDmg      int
 }
 
+func (this *FightResult) IsWorseThan(other *FightResult) bool {
+	if this.Win && !other.Win {
+		return false
+	}
+	if this.CharacterHpLoss < other.CharacterHpLoss && this.RestoreTurns < other.RestoreTurns {
+		return false
+	}
+	return true
+}
+
+func (this *FightResult) IsBetterThan(other *FightResult) bool {
+	if !this.Win && other.Win {
+		return false
+	}
+	if this.CharacterHpLoss > other.CharacterHpLoss && this.RestoreTurns > other.RestoreTurns {
+		return false
+	}
+	return true
+}
+
 type FightSimulator interface {
 	CalculateFightResult(character *character.Character, monster *artifactsmmo.MonsterSchema) (*FightResult, error)
 }

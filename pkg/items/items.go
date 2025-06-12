@@ -50,11 +50,15 @@ func (service *ItemService) GetItem(name string) (*artifactsmmo.ItemSchema, erro
 	service.logger.Info("Looking up item", "code", name)
 	itemResp, err := service.client.GetItemItemsCodeGetWithResponse(ctx, name)
 	if err != nil {
-		service.logger.Error("Could not retrieve item", "body", string(itemResp.Body), "error", err)
+		service.logger.Error("Could not retrieve item", "error", err)
 		return nil, err
 	}
 	if itemResp.StatusCode() == artifactsErrors.NotFound {
 		return nil, errors.New("Item not found.")
+	}
+	if itemResp.StatusCode() != 200 {
+		service.logger.Error("Non 200 status code retrieving item", "body", string(itemResp.Body))
+		return nil, errors.New(string(itemResp.Body))
 	}
 
 	return &itemResp.JSON200.Data, nil

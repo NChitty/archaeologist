@@ -217,7 +217,7 @@ func (actor *DropsFightingActor) heal(character *character.Character, fightResul
 	minHealing := 1 + fightResult.CharacterHpLoss - character.Hp
 	useSchema := buildUseSchema(character, healingItems, minHealing, targetHealing)
 	if useSchema.Code == "" || useSchema.Quantity == 0 {
-		actor.logger.Warn("No item found to heal to minimum health")
+		actor.logger.Warn("No item found to heal to minimum health", "minHealing", minHealing)
 		actor.logger.Info("Resting...")
 		healRes, err := actor.characterService.Rest(character)
 		if err != nil {
